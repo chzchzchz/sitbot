@@ -1,0 +1,121 @@
+#!/usr/bin/python3
+
+import random
+
+sauce = [
+    "classic marinara",
+    "honey sriracha",
+    "specialty pesto",
+    "premium crushed tomat",
+    "smokey barbequeue",
+    "faint buffalo",
+    "creamy garlic parmesan",
+    "tangy balsamic"]
+
+topping = ["legal turkey sausage",
+    "moist egg scramble",
+    "tart Hellman's mayo",
+    "peppery Tobasco hotsauce",
+    "italian sausage",
+    "spicy pepperoni",
+    "100% real beef",
+    "half a bag of jolly ranchers",
+    "actual pork sausage",
+    "slow-roasted ham",
+    "crumbled bacon pieces",
+    "hardwood smoked bacon",
+    "sanitary chicken",
+    "fresh green pepper",
+    "crisp red onion",
+    "fragrant mushroom",
+    "sliced jalapenos",
+    "banana peppers",
+    "ominous black olive",
+    "diced roma tomato",
+    "oily anchovies",
+    "peruvian cherry tomato",
+    "innocent baby spinach",
+    "fresh spinach",
+    "premium salami",
+    "sliced banana pepper",
+    "classic meatball",
+    "feta cheese",
+    "parmesan cheese",
+    "roasted garlic",
+    "minced garlic",
+    "HERSHEY'S triple chocolate brownie",
+    "sweet pineapple"]
+
+sizes = ["personal", "medium", "large", "X-large"]
+crust = [
+     "multigrain",
+     "classic",
+     "thin 'n crispy",
+     "stuffed",
+     "deep dish",
+     "garlic bread",
+     "crazy bread",
+     "salted pretzel",
+     "fiery red pepper",
+     "toasted asiago",
+     "toasted cheddar",
+     "curry",
+     "ginger",
+     "honey sriracha"]
+
+quality = [
+     "homemade",
+     "safeway",
+     "frozen",
+     "cold",
+     "microwaved",
+     "cast-iron reheated",
+     "mom 'n pop",
+     "chain delivery"]
+
+def arr_rand(arr):
+    return arr[random.randint(0,len(arr)-1)]
+
+def mk_slices():
+    global sauce, topping, sizes, crust, quality
+    # eyyyyyyy make-a me a pizzza
+    topping1 = arr_rand(topping)
+    topping2 = arr_rand(topping)
+    if topping2 == topping1:
+        topping2 = "extra $topping1"
+
+    q = ""
+    if random.randint(0,4) == 0:
+        q = arr_rand(quality) + " "
+
+    return q + \
+        arr_rand(sizes) + " " + \
+        arr_rand(crust) + " crust, " + \
+        arr_rand(sauce) + " sauce, pizza with " + \
+        topping1 + " and " + topping2 + " toppings"
+
+
+def mk_greeting():
+    greeting = [
+        "slice time",
+        "welcome to pizza party",
+        "'za time",
+        "I'd like a",
+        "pizza fortune",
+        "another friday night eating",
+        "ever eat a",
+        "yum yum",
+        "delivered to your door",
+        "my dying words",
+        "life is like a",
+        "invented by a mom",
+        "you won't believe this incredible recipe",
+        "my pizza passion is a",
+        "it's so delicious",
+        "I know I shouldn't but",
+        "it's the kind the president likes",
+        "pizza from the old country",
+        "you will be rewarded with"]
+    return arr_rand(greeting)
+
+print(mk_greeting() + "... " + mk_slices())
