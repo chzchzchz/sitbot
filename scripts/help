@@ -1,0 +1,4 @@
+#!/bin/bash
+
+SOURCE="${BASH_SOURCE[0]}"
+echo commands: `ls $(dirname $SOURCE) | sort`
