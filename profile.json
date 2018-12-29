@@ -1,4 +1,11 @@
 {"Id":"main",
  "ServerURL" : "irc://127.0.0.1:6667",
  "Nick":"sitbot",
- "Chans":["#sitbot"]}
+ "Chans":["#sitbot"],
+ "Patterns":
+ [
+	{"Match" : "^([!.]|%n[:,]\\s*)(?P<cmd>\\w+)(\\s+(?P<args>[^\\n]*))?$", "Template" : "$cmd $args"},
+	{"Match" : "(?i)^\\s*(hello|hi|hey|heya|greetings|((good)?(evening|morning|afternoon)))[,!]?\\s+%n", "Template" : "greet %s"},
+	{"Match" : "(?P<url>http[s]?://[^ ]+)", "Template" : "url $url"}
+ ]
+}

@@ -1,0 +1,18 @@
+#!/usr/bin/python3
+import random
+import sys
+
+greets = ["hi", "hello", "hey", "what's up", "oh"]
+pause = ["", ","]
+punct = ["", "!", ".", "..."]
+def arr_rand(arr):
+    return arr[random.randint(0,len(arr)-1)]
+
+def arr_upper_rand(arr):
+    s = arr_rand(arr)
+    if random.randint(0,1) == 0:
+        return s[0].upper() + s[1:]
+    return s
+
+print(arr_upper_rand(greets) + arr_rand(pause) + " " + sys.argv[1] + arr_rand(punct))
+

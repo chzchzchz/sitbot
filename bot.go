@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -17,6 +18,9 @@ type Bot struct {
 	wg       sync.WaitGroup
 	welcomec chan struct{}
 
+	re   []*regexp.Regexp
+	tmpl [][]byte
+
 	chans map[string]*chanInfo
 }
 
@@ -26,6 +30,17 @@ type chanInfo struct {
 }
 
 func NewBot(ctx context.Context, p Profile) (*Bot, error) {
+	re := make([]*regexp.Regexp, len(p.Patterns))
+	tmpl := make([][]byte, len(p.Patterns))
+	for i, pat := range p.Patterns {
+		mat := strings.Replace(pat.Match, "%n", p.Nick, -1)
+		r, err := regexp.Compile(mat)
+		if err != nil {
+			return nil, err
+		}
+		re[i] = r
+		tmpl[i] = []byte(p.Patterns[i].Template)
+	}
 	cctx, cancel := context.WithCancel(ctx)
 	mc, err := NewMsgConn(cctx, p.Server.Host)
 	if err != nil {
@@ -35,6 +50,8 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 	b := &Bot{Profile: p, ctx: ctx, mc: mc, cancel: cancel,
 		chans:    make(map[string]*chanInfo),
 		welcomec: make(chan struct{}),
+		re:       re,
+		tmpl:     tmpl,
 	}
 	b.wg.Add(1)
 	go func() {
@@ -91,17 +108,17 @@ func (b *Bot) txt2cmd(txt string) (cmdtxt string) {
 	if len(txt) == 0 {
 		return ""
 	}
-	if txt[0] == '.' || txt[0] == '!' {
-		return txt[1:]
+	txtb := []byte(txt)
+	for i, re := range b.re {
+		if si := re.FindAllSubmatchIndex(txtb, 1); len(si) != 0 {
+			res := []byte{}
+			for _, submatches := range si {
+				res = re.Expand(res, b.tmpl[i], txtb, submatches)
+			}
+			return string(res)
+		}
 	}
-	if !strings.HasPrefix(txt, b.Nick) {
-		return ""
-	}
-	txt = strings.TrimPrefix(txt, b.Nick)
-	if len(txt) == 0 || (txt[0] != ',' && txt[0] != ':') {
-		return ""
-	}
-	return strings.TrimSpace(txt[1:])
+	return ""
 }
 
 func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
@@ -113,10 +130,13 @@ func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
 	if cmdtxt == "" {
 		return nil
 	}
+	cmdtxt = strings.Replace(cmdtxt, "%s", sender, -1)
+
 	cctx, cancel := context.WithCancel(b.ctx)
 	cmd, err := NewCmd(cctx, cmdtxt)
 	if err != nil {
 		cancel()
+		log.Println("cmd failed", err)
 		return err
 	}
 	defer func() {
