@@ -1,26 +1,17 @@
 package main
 
 import (
-	"context"
-	"io/ioutil"
 	"log"
 	"os"
 )
 
-func panicErr(err error) {
-	if err != nil {
+func main() {
+	laddr := "localhost:9991"
+	if len(os.Args) > 1 {
+		laddr = os.Args[1]
+	}
+	log.Println("serving bot on", laddr)
+	if err := ServeHttp(NewGang(), laddr); err != nil {
 		panic(err)
 	}
-}
-
-func main() {
-	log.Println(os.Args)
-	jsonb, err := ioutil.ReadFile(os.Args[1])
-	panicErr(err)
-	p, err := UnmarshalProfile(jsonb)
-	panicErr(err)
-	b, err := NewBot(context.TODO(), *p)
-	panicErr(err)
-	<-b.Done()
-	b.Close()
 }

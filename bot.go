@@ -29,6 +29,7 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 	cctx, cancel := context.WithCancel(ctx)
 	mc, err := NewMsgConn(cctx, p.Server.Host)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	b := &Bot{Profile: p, ctx: ctx, mc: mc, cancel: cancel,
@@ -115,6 +116,7 @@ func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
 	cctx, cancel := context.WithCancel(b.ctx)
 	cmd, err := NewCmd(cctx, cmdtxt)
 	if err != nil {
+		cancel()
 		return err
 	}
 	defer func() {
