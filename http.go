@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path"
 )
 
 type httpHandler struct {
@@ -38,8 +39,12 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Path[1:]
-	if err := h.g.Delete(id); err != nil {
+	d, f := path.Split(r.URL.Path)
+	if d != "/bot/" {
+		w.WriteHeadeR(http.StatusBadRequest)
+		return
+	}
+	if err := h.g.Delete(f); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

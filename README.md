@@ -16,8 +16,18 @@ good bot
 
 ## Running
 
+Launch `sitbot` to listen on `localhost:12345`:
 ```sh
 go get github.com/chzchzchz/sitbot
 sitbot localhost:12345 &
+```
+
+Connect to an IRC network by posting a bot profile to sitbot:
+```sh
 curl localhost:12345 -XPOST -d@profile.json
+```
+
+Disconnect a bot by deleting its profile identifier:
+```sh
+curl localhost:12345/bot/mainbot -XDELETE
 ```

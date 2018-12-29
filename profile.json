@@ -1,4 +1,4 @@
-{"Id":"main",
+{"Id":"mainbot",
  "ServerURL" : "irc://127.0.0.1:6667",
  "Nick":"sitbot",
  "Chans":["#sitbot"],
