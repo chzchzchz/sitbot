@@ -4,8 +4,8 @@
  "Chans":["#sitbot"],
  "Patterns":
  [
-	{"Match" : "^([!.]|%n[:,]\\s*)(?P<cmd>\\w+)(\\s+(?P<args>[^\\n]*))?$", "Template" : "$cmd $args"},
-	{"Match" : "(?i)^\\s*(hello|hi|hey|heya|greetings|((good)?(evening|morning|afternoon)))[,!]?\\s+%n", "Template" : "greet %s"},
+	{"Match" : "^([!.]|sitbot[:,]\\s*)(?P<cmd>\\w+)(\\s+(?P<args>[^\\n]*))?$", "Template" : "$cmd $args"},
+	{"Match" : "(?i)^\\s*(hello|hi|hey|heya|greetings|((good)?(evening|morning|afternoon)))[,!]?\\s+sitbot", "Template" : "greet %s"},
 	{"Match" : "(?P<url>http[s]?://[^ ]+)", "Template" : "url $url"}
  ]
 }

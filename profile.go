@@ -15,11 +15,6 @@ type Profile struct {
 	Patterns []Pattern
 }
 
-type Pattern struct {
-	Match    string
-	Template string
-}
-
 func UnmarshalProfile(b []byte) (*Profile, error) {
 	var p Profile
 	if err := json.Unmarshal(b, &p); err != nil {

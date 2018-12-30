@@ -17,10 +17,10 @@ func NewGang() *Gang {
 
 func (g *Gang) Post(p Profile) error {
 	g.mu.Lock()
-	_, ok := g.bots[p.Id]
+	bot, ok := g.bots[p.Id]
 	g.mu.Unlock()
 	if ok {
-		return nil
+		return bot.Update(p)
 	}
 	bot, err := NewBot(context.TODO(), p)
 	if err != nil {

@@ -26,6 +26,7 @@ Connect to an IRC network by posting a bot profile to sitbot:
 ```sh
 curl localhost:12345 -XPOST -d@profile.json
 ```
+Reposting a bot profile will update the bot's pattern matching rules.
 
 Disconnect a bot by deleting its profile identifier:
 ```sh
