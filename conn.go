@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -20,7 +19,7 @@ type MsgConn struct {
 	writec chan irc.Message
 }
 
-func NewMsgConn(ctx context.Context, conn net.Conn) (*MsgConn, error) {
+func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgConn, error) {
 	cctx, cancel := context.WithCancel(ctx)
 	mc := &MsgConn{
 		Conn:   irc.NewConn(conn),
@@ -56,16 +55,23 @@ func NewMsgConn(ctx context.Context, conn net.Conn) (*MsgConn, error) {
 			mc.Conn.Close()
 			stopf()
 		}()
-		l := rate.NewLimiter(rate.Every(time.Second), 5)
+		msgs := make([]irc.Message, 5)
+		l := rate.NewLimiter(rate.Every(invl), len(msgs))
 		for {
 			select {
-			case msg := <-mc.writec:
-				if l.Wait(mc.ctx) != nil {
+			case msgs[0] = <-mc.writec:
+				msgc := 0
+				for len(mc.writec) > 0 && msgc < len(msgs)-1 {
+					msgc++
+					msgs[msgc] = <-mc.writec
+				}
+				if err := l.WaitN(mc.ctx, msgc+1); err != nil {
 					return
 				}
-				if err := mc.Encode(&msg); err != nil {
-					log.Printf("failed to write.. %v\n", err)
-					return
+				for _, m := range msgs[:msgc+1] {
+					if mc.Encode(&m) != nil {
+						return
+					}
 				}
 			case <-mc.ctx.Done():
 				return
@@ -110,7 +116,7 @@ func NewTeeMsgConnDial(ctx context.Context, serv string) (*TeeMsgConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	mc, err := NewMsgConn(ctx, conn)
+	mc, err := NewMsgConn(ctx, conn, time.Second)
 	if err != nil {
 		return nil, err
 	}

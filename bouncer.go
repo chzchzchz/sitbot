@@ -42,7 +42,7 @@ func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
 				log.Println(err)
 				return
 			}
-			mc, err := NewMsgConn(ctx, conn)
+			mc, err := NewMsgConn(ctx, conn, time.Millisecond)
 			if err != nil {
 				log.Println(err)
 				return
