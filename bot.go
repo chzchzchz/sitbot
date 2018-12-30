@@ -90,7 +90,6 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 			Params: []string{p.Nick, p.Nick, "localhost", "realname"},
 		},
 		{Command: irc.NICK, Params: []string{p.Nick}},
-		{Command: irc.CAP, Params: []string{"LS"}},
 	} {
 		if err := mc.WriteMsg(msg); err != nil {
 			return nil, err
