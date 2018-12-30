@@ -226,3 +226,6 @@ func (b *Bot) processMsg(msg irc.Message) error {
 	}
 	return nil
 }
+
+func (b *Bot) TxMsgs() uint64 { return b.mc.TxMsgs() }
+func (b *Bot) RxMsgs() uint64 { return b.mc.RxMsgs() }

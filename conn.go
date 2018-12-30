@@ -10,8 +10,17 @@ import (
 	"gopkg.in/sorcix/irc.v2"
 )
 
+type MsgConnStats struct {
+	txMsgs uint64
+	rxMsgs uint64
+}
+
+func (m *MsgConnStats) TxMsgs() uint64 { return m.txMsgs }
+func (m *MsgConnStats) RxMsgs() uint64 { return m.rxMsgs }
+
 type MsgConn struct {
 	*irc.Conn
+	MsgConnStats
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
@@ -46,6 +55,7 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 			}
 			select {
 			case mc.readc <- *msg:
+				mc.rxMsgs++
 			case <-mc.ctx.Done():
 			}
 		}
@@ -62,6 +72,7 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 			}
 			select {
 			case msg := <-mc.writec:
+				mc.txMsgs++
 				if mc.Encode(&msg) != nil {
 					return
 				}
