@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ type Cmd struct {
 	err   error
 }
 
-func NewCmd(ctx context.Context, cmdtxt string) (*Cmd, error) {
+func NewCmd(ctx context.Context, cmdtxt string, env []string) (*Cmd, error) {
 	donec, linec := make(chan struct{}), make(chan string, 5)
 	toks := strings.Split(cmdtxt, " ")
 	cmdname, cmdargs := strings.Replace(toks[0], "/", "_", -1), ""
@@ -24,6 +25,7 @@ func NewCmd(ctx context.Context, cmdtxt string) (*Cmd, error) {
 	}
 	cmdpath := filepath.Join("scripts", cmdname)
 	cmd := exec.CommandContext(ctx, cmdpath, cmdargs)
+	cmd.Env = append(os.Environ(), env...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Println(err)

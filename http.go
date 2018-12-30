@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"path"
+
+	"gopkg.in/sorcix/irc.v2"
 )
 
 type httpHandler struct {
@@ -18,38 +21,51 @@ func ServeHttp(g *Gang, serv string) error {
 }
 
 func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
+	var err error
+	defer func() {
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			io.WriteString(w, err.Error())
+		}
+	}()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, err.Error())
 		return
 	}
-
 	d, f := path.Split(r.URL.Path)
-	if d == "/bouncer/" {
+	switch d {
+	case "/bouncer/":
 		bot := h.g.Lookup(f)
 		if bot == nil {
-			w.WriteHeader(http.StatusBadRequest)
+			err = io.EOF
 			return
 		}
-		if _, err := NewBouncer(bot, string(b)); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+		if _, err = NewBouncer(bot, string(b)); err != nil {
 			return
 		}
 		io.WriteString(w, string(b))
 		return
-	}
-
-	p, err := UnmarshalProfile(b)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, err.Error())
-		return
-	}
-	if err := h.g.Post(*p); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, err.Error())
-		return
+	case "/bot/":
+		m := &irc.Message{}
+		if err = json.Unmarshal(b, m); err != nil {
+			return
+		}
+		bot := h.g.Lookup(f)
+		if len(m.Command) == 0 || bot == nil {
+			err = io.EOF
+			return
+		}
+		if err = bot.mc.WriteMsg(*m); err != nil {
+			return
+		}
+	case "/":
+		p, err := UnmarshalProfile(b)
+		if err != nil {
+			return
+		}
+		if err = h.g.Post(*p); err != nil {
+			return
+		}
 	}
 	io.WriteString(w, "OK")
 }

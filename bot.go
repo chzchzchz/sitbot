@@ -141,7 +141,13 @@ func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
 	cmdtxt = strings.Replace(cmdtxt, "%s", sender, -1)
 
 	cctx, cancel := context.WithCancel(b.ctx)
-	cmd, err := NewCmd(cctx, cmdtxt)
+	env := []string{
+		"SITBOT_ID=" + b.Id,
+		"SITBOT_NICK=" + b.Nick,
+		"SITBOT_FROM=" + sender,
+		"SITBOT_CHAN=" + tgt,
+	}
+	cmd, err := NewCmd(cctx, cmdtxt, env)
 	if err != nil {
 		cancel()
 		log.Println("cmd failed", err)
