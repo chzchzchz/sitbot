@@ -122,7 +122,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 	}
 	nnpfx2 := &irc.Prefix{Name: nnick}
 	for _, c := range b.bot.Channels() {
-		msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{c.Name}}
+		msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{c}}
 		if err := mc.WriteMsg(msg); err != nil {
 			return err
 		}
@@ -132,7 +132,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 			defer wg.Done()
 			msg := irc.Message{Command: irc.NAMES, Params: []string{chn}}
 			b.bot.mc.WriteMsg(msg)
-		}(c.Name)
+		}(c)
 	}
 	brc, bdc := b.bot.mc.NewReadChan()
 	defer close(bdc)

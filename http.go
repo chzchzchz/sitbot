@@ -26,6 +26,11 @@ Server: {{.ServerURL}}<br/>
 Online since: {{.StartTime.Format "Mon Jan 2 15:04:05 MST 2006"}}<br/>
 Messages Sent: {{.TxMsgs}}<br/>
 Messages Received: {{.RxMsgs}}<br/>
+Channels:
+{{range .Channels}}
+{{.}}
+{{end}}
+<br/>
 Patterns:
 <table>
 {{range .Patterns}}

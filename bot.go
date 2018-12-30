@@ -13,6 +13,7 @@ import (
 type Bot struct {
 	Profile
 	StartTime time.Time
+	chans     map[string]struct{}
 
 	ctx    context.Context
 	mc     *TeeMsgConn
@@ -24,27 +25,14 @@ type Bot struct {
 
 	pm *PatternMatcher
 
-	chans map[string]*chanInfo
-
 	mu sync.RWMutex
 }
 
-type chanInfo struct {
-	nicks map[string]struct{}
-}
-
-type Channel struct {
-	Name  string
-	Nicks []string
-}
-
-func (b *Bot) Channels() (ret []Channel) {
-	for n, ci := range b.chans {
-		nicks := make([]string, 0, len(ci.nicks))
-		for nick := range ci.nicks {
-			nicks = append(nicks, nick)
-		}
-		ret = append(ret, Channel{Name: n, Nicks: nicks})
+func (b *Bot) Channels() (ret []string) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	for c := range b.chans {
+		ret = append(ret, c)
 	}
 	return ret
 }
@@ -73,7 +61,7 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 		return nil, err
 	}
 	b := &Bot{Profile: p, ctx: ctx, mc: mc, cancel: cancel,
-		chans:     make(map[string]*chanInfo),
+		chans:     make(map[string]struct{}),
 		welcomec:  make(chan struct{}),
 		pm:        pm,
 		StartTime: time.Now(),
@@ -117,15 +105,6 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 func (b *Bot) Close() {
 	b.cancel()
 	b.wg.Wait()
-}
-
-func (b *Bot) lookupChanInfo(chname string) *chanInfo {
-	if ci := b.chans[chname]; ci != nil {
-		return ci
-	}
-	ci := &chanInfo{nicks: make(map[string]struct{})}
-	b.chans[chname] = ci
-	return ci
 }
 
 func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
@@ -189,27 +168,13 @@ func (b *Bot) processMsg(msg irc.Message) error {
 			defer b.wg.Done()
 			b.processPrivMsg(msg.Prefix.Name, msg.Params[0], msg.Params[1])
 		}()
-	case irc.RPL_NAMREPLY:
-		if len(msg.Params) < 4 {
+	case irc.JOIN:
+		if len(msg.Params) == 0 {
 			return nil
 		}
-		ci := b.lookupChanInfo(msg.Params[2])
-		for _, n := range strings.Split(msg.Params[3], " ") {
-			ci.nicks[n] = struct{}{}
-		}
-	case irc.PART:
-		if msg.Prefix == nil {
-			return nil
-		}
-		if msg.Prefix.Name == b.Nick {
-			delete(b.chans, msg.Params[0])
-		} else {
-			delete(b.lookupChanInfo(msg.Params[0]).nicks, msg.Prefix.Name)
-		}
-	case irc.KICK:
-		if len(msg.Params) >= 2 && msg.Params[1] == b.Nick {
-			delete(b.chans, msg.Params[0])
-		}
+		b.mu.Lock()
+		b.chans[msg.Params[0]] = struct{}{}
+		b.mu.Unlock()
 	case irc.INVITE:
 		if len(msg.Params) > 1 {
 			if cn := msg.Params[1]; len(cn) > 0 && cn[0] == '#' {
@@ -217,12 +182,6 @@ func (b *Bot) processMsg(msg irc.Message) error {
 				return b.mc.WriteMsg(out)
 			}
 		}
-	case irc.JOIN:
-		if msg.Prefix == nil || msg.Prefix.Name == b.Nick || len(msg.Params) == 0 {
-			return nil
-		}
-		chname := msg.Params[0]
-		b.lookupChanInfo(chname).nicks[msg.Prefix.Name] = struct{}{}
 	}
 	return nil
 }
