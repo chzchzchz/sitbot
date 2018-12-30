@@ -1,0 +1,7 @@
+#!/usr/bin/python3
+import sys
+for fg in range(0,16):
+    s=chr(0x03)+str(fg)+",0 "+str(fg)+chr(0x02)
+    for bg in range(0,16):
+        s = s + chr(0x03)+str(fg)+","+str(bg)+" "+str(bg)
+    print(s)
