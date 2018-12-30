@@ -14,55 +14,41 @@ import (
 type MsgConn struct {
 	*irc.Conn
 	ctx    context.Context
+	cancel context.CancelFunc
 	wg     sync.WaitGroup
 	readc  chan irc.Message
 	writec chan irc.Message
 }
 
-func (mc *MsgConn) ReadChan() <-chan irc.Message {
-	return mc.readc
-}
-
-func (mc *MsgConn) WriteMsg(m irc.Message) error {
-	select {
-	case mc.writec <- m:
-		return nil
-	case <-mc.ctx.Done():
-		return mc.ctx.Err()
-	}
-}
-
-func (mc *MsgConn) WriteChan() chan<- irc.Message { return mc.writec }
-
-func (mc *MsgConn) DoneChan() <-chan struct{} { return mc.ctx.Done() }
-
-func NewMsgConn(ctx context.Context, serv string) (*MsgConn, error) {
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", serv)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := context.WithCancel(ctx)
+func NewMsgConn(ctx context.Context, conn net.Conn) (*MsgConn, error) {
+	cctx, cancel := context.WithCancel(ctx)
 	mc := &MsgConn{
 		Conn:   irc.NewConn(conn),
-		ctx:    ctx,
-		readc:  make(chan irc.Message, 1),
+		ctx:    cctx,
+		cancel: cancel,
+		readc:  make(chan irc.Message, 16),
 		writec: make(chan irc.Message, 16),
 	}
 	mc.wg.Add(2)
 	stopf := func() {
-		cancel()
+		mc.cancel()
 		mc.wg.Done()
 	}
 	go func() {
-		defer stopf()
+		defer func() {
+			stopf()
+			close(mc.readc)
+		}()
 		for {
 			msg, err := mc.Decode()
 			if err != nil {
 				mc.Conn.Close()
-				close(mc.readc)
 				return
 			}
-			mc.readc <- *msg
+			select {
+			case mc.readc <- *msg:
+			case <-mc.ctx.Done():
+			}
 		}
 	}()
 	go func() {
@@ -89,8 +75,97 @@ func NewMsgConn(ctx context.Context, serv string) (*MsgConn, error) {
 	return mc, nil
 }
 
+func (mc *MsgConn) WriteMsg(m irc.Message) error {
+	select {
+	case mc.writec <- m:
+		return nil
+	case <-mc.ctx.Done():
+		return mc.ctx.Err()
+	}
+}
+
+func (mc *MsgConn) ReadChan() <-chan irc.Message  { return mc.readc }
+func (mc *MsgConn) WriteChan() chan<- irc.Message { return mc.writec }
+func (mc *MsgConn) DoneChan() <-chan struct{}     { return mc.ctx.Done() }
+
 func (mc *MsgConn) Close() error {
 	err := mc.Conn.Close()
 	mc.wg.Wait()
 	return err
+}
+
+type TeeMsgConn struct {
+	*MsgConn
+	rchans []readChan
+	mu     sync.Mutex
+}
+
+type readChan struct {
+	readc chan irc.Message
+	donec <-chan struct{}
+}
+
+func NewTeeMsgConnDial(ctx context.Context, serv string) (*TeeMsgConn, error) {
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", serv)
+	if err != nil {
+		return nil, err
+	}
+	mc, err := NewMsgConn(ctx, conn)
+	if err != nil {
+		return nil, err
+	}
+	return &TeeMsgConn{MsgConn: mc}, nil
+}
+
+func (tmc *TeeMsgConn) start() {
+	tmc.wg.Add(1)
+	go func() {
+		defer func() {
+			for _, rc := range tmc.rchans {
+				close(rc.readc)
+			}
+			tmc.wg.Done()
+		}()
+		for msg := range tmc.readc {
+			tmc.mu.Lock()
+			rchans := tmc.rchans
+			tmc.mu.Unlock()
+			for _, rc := range rchans {
+				select {
+				case rc.readc <- msg:
+				case <-rc.donec:
+				case <-tmc.ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+}
+
+func (tmc *TeeMsgConn) NewReadChan() (<-chan irc.Message, chan<- struct{}) {
+	donec := make(chan struct{})
+	rc := readChan{readc: make(chan irc.Message, 16), donec: donec}
+	tmc.mu.Lock()
+	oldrchans := tmc.rchans
+	tmc.rchans = append(tmc.rchans, rc)
+	tmc.mu.Unlock()
+	if oldrchans == nil {
+		tmc.start()
+	}
+	return rc.readc, donec
+}
+
+func (mc *TeeMsgConn) DropReadChan(rc <-chan irc.Message) {
+	defer mc.mu.Unlock()
+	mc.mu.Lock()
+	if len(mc.rchans) == 0 {
+		return
+	}
+	rchans := make([]readChan, 0, len(mc.rchans)-1)
+	for _, mcrc := range mc.rchans {
+		if rc != mcrc.readc {
+			rchans = append(rchans, mcrc)
+		}
+	}
+	mc.rchans = rchans
 }

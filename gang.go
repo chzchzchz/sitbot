@@ -50,6 +50,12 @@ func (g *Gang) Delete(id string) error {
 	return nil
 }
 
+func (g *Gang) Lookup(id string) *Bot {
+	defer g.mu.Unlock()
+	g.mu.Lock()
+	return g.bots[id]
+}
+
 func (g *Gang) Close() {
 	for _, b := range g.bots {
 		b.Close()

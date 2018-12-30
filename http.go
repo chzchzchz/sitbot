@@ -24,6 +24,22 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, err.Error())
 		return
 	}
+
+	d, f := path.Split(r.URL.Path)
+	if d == "/bouncer/" {
+		bot := h.g.Lookup(f)
+		if bot == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if _, err := NewBouncer(bot, string(b)); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		io.WriteString(w, string(b))
+		return
+	}
+
 	p, err := UnmarshalProfile(b)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -40,15 +56,19 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 
 func (h *httpHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	d, f := path.Split(r.URL.Path)
-	if d != "/bot/" {
-		w.WriteHeadeR(http.StatusBadRequest)
-		return
-	}
-	if err := h.g.Delete(f); err != nil {
+	switch d {
+	case "/bot/":
+		if err := h.g.Delete(f); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		io.WriteString(w, "OK")
+	case "/bouncer/":
+		// TODO
 		w.WriteHeader(http.StatusBadRequest)
-		return
+	default:
+		w.WriteHeader(http.StatusBadRequest)
 	}
-	io.WriteString(w, "OK")
 }
 
 func (h *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -12,11 +12,13 @@ import (
 
 type Bot struct {
 	Profile
-	ctx      context.Context
-	mc       *MsgConn
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	ctx    context.Context
+	mc     *TeeMsgConn
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+
 	welcomec chan struct{}
+	netpfx   *irc.Prefix
 
 	re   []*regexp.Regexp
 	tmpl [][]byte
@@ -27,6 +29,22 @@ type Bot struct {
 type chanInfo struct {
 	nicks  map[string]struct{}
 	filled bool
+}
+
+type Channel struct {
+	Name  string
+	Nicks []string
+}
+
+func (b *Bot) Channels() (ret []Channel) {
+	for n, ci := range b.chans {
+		nicks := make([]string, 0, len(ci.nicks))
+		for nick := range ci.nicks {
+			nicks = append(nicks, nick)
+		}
+		ret = append(ret, Channel{Name: n, Nicks: nicks})
+	}
+	return ret
 }
 
 func NewBot(ctx context.Context, p Profile) (*Bot, error) {
@@ -42,7 +60,7 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 		tmpl[i] = []byte(p.Patterns[i].Template)
 	}
 	cctx, cancel := context.WithCancel(ctx)
-	mc, err := NewMsgConn(cctx, p.Server.Host)
+	mc, err := NewTeeMsgConnDial(cctx, p.Server.Host)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -56,7 +74,9 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()
-		for msg := range b.mc.ReadChan() {
+		rc, dc := b.mc.NewReadChan()
+		defer close(dc)
+		for msg := range rc {
 			if err := b.processMsg(msg); err != nil {
 				panic(err)
 			}
@@ -105,9 +125,6 @@ func (b *Bot) lookupChanInfo(chname string) *chanInfo {
 }
 
 func (b *Bot) txt2cmd(txt string) (cmdtxt string) {
-	if len(txt) == 0 {
-		return ""
-	}
 	txtb := []byte(txt)
 	for i, re := range b.re {
 		if si := re.FindAllSubmatchIndex(txtb, 1); len(si) != 0 {
@@ -156,6 +173,7 @@ func (b *Bot) processMsg(msg irc.Message) error {
 	log.Printf("processMsg: %+v\n", msg)
 	switch msg.Command {
 	case irc.RPL_WELCOME:
+		b.netpfx = msg.Prefix
 		close(b.welcomec)
 	case irc.PING:
 		b.wg.Add(1)

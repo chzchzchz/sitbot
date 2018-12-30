@@ -31,3 +31,8 @@ Disconnect a bot by deleting its profile identifier:
 ```sh
 curl localhost:12345/bot/mainbot -XDELETE
 ```
+
+Create a bouncer:
+```sh
+curl localhost:12345/bouncer/mainbot -XPOST -d localhost:7777
+```
