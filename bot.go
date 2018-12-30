@@ -5,12 +5,15 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"gopkg.in/sorcix/irc.v2"
 )
 
 type Bot struct {
 	Profile
+	StartTime time.Time
+
 	ctx    context.Context
 	mc     *TeeMsgConn
 	cancel context.CancelFunc
@@ -27,8 +30,7 @@ type Bot struct {
 }
 
 type chanInfo struct {
-	nicks  map[string]struct{}
-	filled bool
+	nicks map[string]struct{}
 }
 
 type Channel struct {
@@ -54,6 +56,7 @@ func (b *Bot) Update(p Profile) error {
 	}
 	b.mu.Lock()
 	b.pm = pm
+	b.Patterns = p.Patterns
 	b.mu.Unlock()
 	return nil
 }
@@ -70,9 +73,10 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 		return nil, err
 	}
 	b := &Bot{Profile: p, ctx: ctx, mc: mc, cancel: cancel,
-		chans:    make(map[string]*chanInfo),
-		welcomec: make(chan struct{}),
-		pm:       pm,
+		chans:     make(map[string]*chanInfo),
+		welcomec:  make(chan struct{}),
+		pm:        pm,
+		StartTime: time.Now(),
 	}
 	b.wg.Add(1)
 	go func() {
@@ -109,8 +113,6 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 	}
 	return b, nil
 }
-
-func (b *Bot) Done() <-chan struct{} { return b.mc.DoneChan() }
 
 func (b *Bot) Close() {
 	b.cancel()
@@ -195,12 +197,6 @@ func (b *Bot) processMsg(msg irc.Message) error {
 		for _, n := range strings.Split(msg.Params[3], " ") {
 			ci.nicks[n] = struct{}{}
 		}
-	case irc.RPL_ENDOFNAMES:
-		if len(msg.Params) < 2 {
-			return nil
-		}
-		chname := msg.Params[1]
-		b.lookupChanInfo(chname).filled = true
 	case irc.PART:
 		if msg.Prefix == nil {
 			return nil
