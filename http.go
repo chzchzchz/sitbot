@@ -31,6 +31,18 @@ Channels:
 {{.}}
 {{end}}
 <br/>
+
+Tasks:
+<table>
+<tr><td>Task</td><td>Wall Time</td></tr>
+{{range .Tasks}}
+<tr>
+	<td>{{.Name}}</td>
+	<td>{{.Elapsed}}</td>
+</tr>
+{{end}}
+</table>
+
 Patterns:
 <table>
 {{range .Patterns}}

@@ -95,7 +95,6 @@ func (mc *MsgConn) WriteMsg(m irc.Message) error {
 
 func (mc *MsgConn) ReadChan() <-chan irc.Message  { return mc.readc }
 func (mc *MsgConn) WriteChan() chan<- irc.Message { return mc.writec }
-func (mc *MsgConn) DoneChan() <-chan struct{}     { return mc.ctx.Done() }
 
 func (mc *MsgConn) Close() error {
 	err := mc.Conn.Close()

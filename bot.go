@@ -10,6 +10,10 @@ import (
 	"gopkg.in/sorcix/irc.v2"
 )
 
+type taskContextKey string
+
+const taskContextKeyTask = taskContextKey("task")
+
 type Bot struct {
 	Profile
 	StartTime time.Time
@@ -20,12 +24,29 @@ type Bot struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
+	tasks    map[context.Context]time.Time
 	welcomec chan struct{}
 	netpfx   *irc.Prefix
 
 	pm *PatternMatcher
 
 	mu sync.RWMutex
+}
+
+type Task struct {
+	Name  string
+	Start time.Time
+}
+
+func (t *Task) Elapsed() time.Duration { return time.Since(t.Start) }
+
+func (b *Bot) Tasks() (ret []Task) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	for c, t := range b.tasks {
+		ret = append(ret, Task{c.Value(taskContextKeyTask).(string), t})
+	}
+	return ret
 }
 
 func (b *Bot) Channels() (ret []string) {
@@ -63,6 +84,7 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 	b := &Bot{Profile: p, ctx: ctx, mc: mc, cancel: cancel,
 		chans:     make(map[string]struct{}),
 		welcomec:  make(chan struct{}),
+		tasks:     make(map[context.Context]time.Time),
 		pm:        pm,
 		StartTime: time.Now(),
 	}
@@ -89,7 +111,7 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 	}
 	select {
 	case <-b.welcomec:
-	case <-b.mc.DoneChan():
+	case <-b.mc.ctx.Done():
 		return nil, ctx.Err()
 	}
 	for _, ch := range p.Chans {
@@ -107,7 +129,7 @@ func (b *Bot) Close() {
 	b.wg.Wait()
 }
 
-func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
+func (b *Bot) processPrivMsg(ctx context.Context, sender string, tgt string, txt string) error {
 	outtgt := tgt
 	if tgt[0] != '#' {
 		outtgt = sender
@@ -121,7 +143,7 @@ func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
 	}
 	cmdtxt = strings.Replace(cmdtxt, "%s", sender, -1)
 
-	cctx, cancel := context.WithCancel(b.ctx)
+	cctx, cancel := context.WithCancel(ctx)
 	env := []string{
 		"SITBOT_ID=" + b.Id,
 		"SITBOT_NICK=" + b.Nick,
@@ -147,6 +169,23 @@ func (b *Bot) processPrivMsg(sender string, tgt string, txt string) error {
 	return err
 }
 
+func (b *Bot) runTask(ctx context.Context, f func(context.Context) error) {
+	t := time.Now()
+	b.mu.Lock()
+	b.tasks[ctx] = t
+	b.mu.Unlock()
+	b.wg.Add(1)
+	go func() {
+		defer func() {
+			b.mu.Lock()
+			delete(b.tasks, ctx)
+			b.mu.Unlock()
+			b.wg.Done()
+		}()
+		f(ctx)
+	}()
+}
+
 func (b *Bot) processMsg(msg irc.Message) error {
 	log.Printf("processMsg: %+v\n", msg)
 	switch msg.Command {
@@ -154,20 +193,23 @@ func (b *Bot) processMsg(msg irc.Message) error {
 		b.netpfx = msg.Prefix
 		close(b.welcomec)
 	case irc.PING:
-		b.wg.Add(1)
-		go func() {
-			defer b.wg.Done()
-			b.mc.WriteMsg(irc.Message{Command: irc.PONG, Params: msg.Params})
-		}()
+		tctx := context.WithValue(b.ctx, taskContextKeyTask, "ping")
+		b.runTask(tctx, func(context.Context) error {
+			return b.mc.WriteMsg(
+				irc.Message{Command: irc.PONG, Params: msg.Params})
+		})
 	case irc.PRIVMSG:
 		if msg.Prefix == nil || len(msg.Params) < 1 {
 			return nil
 		}
-		b.wg.Add(1)
-		go func() {
-			defer b.wg.Done()
-			b.processPrivMsg(msg.Prefix.Name, msg.Params[0], msg.Params[1])
-		}()
+		tctx := context.WithValue(b.ctx, taskContextKeyTask, msg.Params[1])
+		b.runTask(tctx, func(ctx context.Context) error {
+			return b.processPrivMsg(
+				ctx,
+				msg.Prefix.Name,
+				msg.Params[0],
+				msg.Params[1])
+		})
 	case irc.JOIN:
 		if len(msg.Params) == 0 {
 			return nil
@@ -178,8 +220,11 @@ func (b *Bot) processMsg(msg irc.Message) error {
 	case irc.INVITE:
 		if len(msg.Params) > 1 {
 			if cn := msg.Params[1]; len(cn) > 0 && cn[0] == '#' {
-				out := irc.Message{Command: irc.JOIN, Params: []string{cn}}
-				return b.mc.WriteMsg(out)
+				tctx := context.WithValue(b.ctx, taskContextKeyTask, "invite")
+				b.runTask(tctx, func(context.Context) error {
+					out := irc.Message{Command: irc.JOIN, Params: []string{cn}}
+					return b.mc.WriteMsg(out)
+				})
 			}
 		}
 	}
