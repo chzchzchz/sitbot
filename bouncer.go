@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sorcix/irc"
+	"gopkg.in/sorcix/irc.v2"
 )
 
 type Bouncer struct {
@@ -122,7 +122,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 	}
 	nnpfx2 := &irc.Prefix{Name: nnick}
 	for _, c := range b.bot.Channels() {
-		msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Trailing: c.Name}
+		msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{c.Name}}
 		if err := mc.WriteMsg(msg); err != nil {
 			return err
 		}
@@ -130,7 +130,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 		wg.Add(1)
 		go func(chn string) {
 			defer wg.Done()
-			msg := irc.Message{Command: irc.NAMES, Trailing: chn}
+			msg := irc.Message{Command: irc.NAMES, Params: []string{chn}}
 			b.bot.mc.WriteMsg(msg)
 		}(c.Name)
 	}

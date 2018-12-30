@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sorcix/irc"
 	"golang.org/x/time/rate"
+	"gopkg.in/sorcix/irc.v2"
 )
 
 type MsgConn struct {

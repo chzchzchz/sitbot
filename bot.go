@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sorcix/irc"
+	"gopkg.in/sorcix/irc.v2"
 )
 
 type Bot struct {
@@ -188,14 +188,14 @@ func (b *Bot) processMsg(msg irc.Message) error {
 		b.wg.Add(1)
 		go func() {
 			defer b.wg.Done()
-			b.processPrivMsg(msg.Prefix.Name, msg.Params[0], msg.Trailing)
+			b.processPrivMsg(msg.Prefix.Name, msg.Params[0], msg.Params[1])
 		}()
 	case irc.RPL_NAMREPLY:
-		if len(msg.Params) < 3 {
+		if len(msg.Params) < 4 {
 			return nil
 		}
 		ci := b.lookupChanInfo(msg.Params[2])
-		for _, n := range strings.Split(msg.Trailing, " ") {
+		for _, n := range strings.Split(msg.Params[3], " ") {
 			ci.nicks[n] = struct{}{}
 		}
 	case irc.RPL_ENDOFNAMES:
@@ -209,24 +209,26 @@ func (b *Bot) processMsg(msg irc.Message) error {
 			return nil
 		}
 		if msg.Prefix.Name == b.Nick {
-			delete(b.chans, msg.Trailing)
+			delete(b.chans, msg.Params[0])
 		} else {
-			delete(b.lookupChanInfo(msg.Trailing).nicks, msg.Prefix.Name)
+			delete(b.lookupChanInfo(msg.Params[0]).nicks, msg.Prefix.Name)
 		}
 	case irc.KICK:
 		if len(msg.Params) >= 2 && msg.Params[1] == b.Nick {
 			delete(b.chans, msg.Params[0])
 		}
 	case irc.INVITE:
-		if cn := msg.Trailing; len(cn) > 0 && cn[0] == '#' {
-			out := irc.Message{Command: irc.JOIN, Params: []string{cn}}
-			return b.mc.WriteMsg(out)
+		if len(msg.Params) > 1 {
+			if cn := msg.Params[1]; len(cn) > 0 && cn[0] == '#' {
+				out := irc.Message{Command: irc.JOIN, Params: []string{cn}}
+				return b.mc.WriteMsg(out)
+			}
 		}
 	case irc.JOIN:
-		if msg.Prefix == nil || msg.Prefix.Name == b.Nick {
+		if msg.Prefix == nil || msg.Prefix.Name == b.Nick || len(msg.Params) == 0 {
 			return nil
 		}
-		chname := msg.Trailing
+		chname := msg.Params[0]
 		b.lookupChanInfo(chname).nicks[msg.Prefix.Name] = struct{}{}
 	}
 	return nil
