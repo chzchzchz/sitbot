@@ -55,23 +55,15 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 			mc.Conn.Close()
 			stopf()
 		}()
-		msgs := make([]irc.Message, 5)
-		l := rate.NewLimiter(rate.Every(invl), len(msgs))
+		l := rate.NewLimiter(rate.Every(invl), 1)
 		for {
+			if err := l.Wait(mc.ctx); err != nil {
+				return
+			}
 			select {
-			case msgs[0] = <-mc.writec:
-				msgc := 0
-				for len(mc.writec) > 0 && msgc < len(msgs)-1 {
-					msgc++
-					msgs[msgc] = <-mc.writec
-				}
-				if err := l.WaitN(mc.ctx, msgc+1); err != nil {
+			case msg := <-mc.writec:
+				if mc.Encode(&msg) != nil {
 					return
-				}
-				for _, m := range msgs[:msgc+1] {
-					if mc.Encode(&m) != nil {
-						return
-					}
 				}
 			case <-mc.ctx.Done():
 				return
