@@ -11,12 +11,13 @@ import (
 )
 
 type taskContextKey string
+type Time time.Time
 
 const taskContextKeyTask = taskContextKey("task")
 
 type Bot struct {
 	Profile
-	StartTime time.Time
+	StartTime Time
 	chans     map[string]struct{}
 
 	ctx    context.Context
@@ -35,16 +36,17 @@ type Bot struct {
 
 type Task struct {
 	Name  string
-	Start time.Time
+	Start Time
 }
 
-func (t *Task) Elapsed() time.Duration { return time.Since(t.Start) }
+func (t *Time) Elapsed() time.Duration { return time.Since(t.T()) }
+func (t *Time) T() time.Time           { return time.Time(*t) }
 
 func (b *Bot) Tasks() (ret []Task) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	for c, t := range b.tasks {
-		ret = append(ret, Task{c.Value(taskContextKeyTask).(string), t})
+		ret = append(ret, Task{c.Value(taskContextKeyTask).(string), Time(t)})
 	}
 	return ret
 }
@@ -86,7 +88,7 @@ func NewBot(ctx context.Context, p Profile) (*Bot, error) {
 		welcomec:  make(chan struct{}),
 		tasks:     make(map[context.Context]time.Time),
 		pm:        pm,
-		StartTime: time.Now(),
+		StartTime: Time(time.Now()),
 	}
 	b.wg.Add(1)
 	go func() {

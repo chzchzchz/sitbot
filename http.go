@@ -23,7 +23,8 @@ const tmplBot = `
 <p>
 Nick: {{.Nick}}<br/>
 Server: {{.ServerURL}}<br/>
-Online since: {{.StartTime.Format "Mon Jan 2 15:04:05 MST 2006"}}<br/>
+Online since: {{.StartTime.T.Format "Mon Jan 2 15:04:05 MST 2006"}}<br/>
+Uptime: {{.StartTime.Elapsed}}<br/>
 Messages Sent: {{.TxMsgs}}<br/>
 Messages Received: {{.RxMsgs}}<br/>
 Channels:
