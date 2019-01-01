@@ -23,8 +23,8 @@ const tmplBot = `
 <p>
 Nick: {{.Nick}}<br/>
 Server: {{.ServerURL}}<br/>
-Online since: {{.StartTime.T.Format "Mon Jan 2 15:04:05 MST 2006"}}<br/>
-Uptime: {{.StartTime.Elapsed}}<br/>
+Online since: {{.Start.T.Format "Mon Jan 2 15:04:05 MST 2006"}}<br/>
+Uptime: {{.Start.Elapsed}}<br/>
 Messages Sent: {{.TxMsgs}}<br/>
 Messages Received: {{.RxMsgs}}<br/>
 Channels:
@@ -47,6 +47,17 @@ Tasks:
 Patterns:
 <table>
 {{range .Patterns}}
+<tr>
+	<td style="border: 1px solid blue;">{{.Match}}</td>
+	<td>&rarr;</td>
+	<td style="border: 1px solid red;">{{.Template}}</td>
+</tr>
+{{end}}
+</table>
+
+Raw Patterns:
+<table>
+{{range .PatternsRaw}}
 <tr>
 	<td style="border: 1px solid blue;">{{.Match}}</td>
 	<td>&rarr;</td>

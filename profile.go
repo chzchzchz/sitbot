@@ -11,8 +11,9 @@ type Profile struct {
 	Nick      string
 	Chans     []string
 	// Id is the way to reference this bot.
-	Id       string
-	Patterns []Pattern
+	Id          string
+	Patterns    []Pattern
+	PatternsRaw []Pattern
 }
 
 func UnmarshalProfile(b []byte) (*Profile, error) {

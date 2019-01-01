@@ -16,10 +16,7 @@ func NewGang() *Gang {
 }
 
 func (g *Gang) Post(p Profile) error {
-	g.mu.Lock()
-	bot, ok := g.bots[p.Id]
-	g.mu.Unlock()
-	if ok {
+	if bot := g.Lookup(p.Id); bot != nil {
 		return bot.Update(p)
 	}
 	bot, err := NewBot(context.TODO(), p)
@@ -27,13 +24,13 @@ func (g *Gang) Post(p Profile) error {
 		return err
 	}
 	g.mu.Lock()
-	if _, ok := g.bots[p.Id]; ok {
-		err = fmt.Errorf("%s exists", p.Id)
-	} else {
-		g.bots[p.Id] = bot
-	}
+	ob := g.bots[p.Id]
+	g.bots[p.Id] = bot
 	g.mu.Unlock()
-	return err
+	if ob != nil {
+		ob.Close()
+	}
+	return nil
 }
 
 func (g *Gang) Delete(id string) error {

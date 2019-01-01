@@ -1,0 +1,3 @@
+#!/bin/bash
+set -eox pipefail
+curl ${SITBOT_URL}/bot/${SITBOT_ID} -XPOST -d'{"Command" : "JOIN", "Params" : ["'"$1"'"]}' >/dev/null 2>&1
