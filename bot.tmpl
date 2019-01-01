@@ -14,10 +14,11 @@ Channels:
 
 Tasks:
 <table style="margin-left: 1em;">
-<tr><td>Task</td><td>Wall Time</td></tr>
+<tr><td>Task</td><td>Lines</td><td>Wall time</td></tr>
 {{range $tid, $task := .Tasks}}
 <tr>
 	<td>{{$task.Name}}</td>
+	<td style="text-align: right;">{{$task.Lines}}</td>
 	<td style="text-align: right;">{{$task.Start.Elapsed}}</td>
 </tr>
 {{end}}

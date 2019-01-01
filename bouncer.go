@@ -127,7 +127,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 		wg.Add(1)
 		go func(chn string) {
 			defer wg.Done()
-			msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{c}}
+			msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{chn}}
 			mc.WriteMsg(msg)
 			msg = irc.Message{Command: irc.NAMES, Params: []string{chn}}
 			b.bot.mc.WriteMsg(msg)

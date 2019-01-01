@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"gopkg.in/sorcix/irc.v2"
@@ -18,6 +19,39 @@ func (t Time) T() time.Time           { return time.Time(t) }
 type Task struct {
 	Name  string
 	Start Time
+	lines uint32
+	b     *Bot
+	ctx   context.Context
+}
+
+func (t *Task) Lines() uint32 { return atomic.LoadUint32(&t.lines) }
+
+func (t *Task) Write(msg irc.Message) error {
+	if err := t.b.mc.WriteMsg(msg); err != nil {
+		return err
+	}
+	atomic.AddUint32(&t.lines, 1)
+	return nil
+}
+
+func (t *Task) PipeCmd(cmdtxt, tgt string, env []string) error {
+	cctx, cancel := context.WithCancel(t.ctx)
+	cmd, err := NewCmd(cctx, cmdtxt, env)
+	if err != nil {
+		cancel()
+		return err
+	}
+	defer func() {
+		cancel()
+		cmd.Close()
+	}()
+	for l := range cmd.Lines() {
+		out := irc.Message{Command: irc.PRIVMSG, Params: []string{tgt, l}}
+		if err := t.Write(out); err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 type Bot struct {
@@ -31,7 +65,7 @@ type Bot struct {
 	mc *TeeMsgConn
 	wg sync.WaitGroup
 
-	Tasks map[uint64]Task
+	Tasks map[uint64]*Task
 	tid   uint64
 
 	welcomec chan struct{}
@@ -63,7 +97,7 @@ func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 	b = &Bot{Profile: p,
 		Start:    Time(time.Now()),
 		Channels: make(map[string]struct{}),
-		Tasks:    make(map[uint64]Task),
+		Tasks:    make(map[uint64]*Task),
 		welcomec: make(chan struct{}),
 	}
 	if err = b.Update(b.Profile); err != nil {
@@ -103,8 +137,8 @@ func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 		return nil, ctx.Err()
 	}
 	for _, ch := range p.Chans {
-		b.runTask("JOIN", func(ctx context.Context) error {
-			return b.mc.WriteMsg(irc.Message{Command: irc.JOIN, Params: []string{ch}})
+		b.runTask("JOIN", func(t *Task) error {
+			return t.Write(irc.Message{Command: irc.JOIN, Params: []string{ch}})
 		})
 	}
 	return b, nil
@@ -119,27 +153,7 @@ func (b *Bot) Env() []string {
 	return []string{"SITBOT_ID=" + b.Id, "SITBOT_NICK=" + b.Nick}
 }
 
-func (b *Bot) PipeCmd(ctx context.Context, cmdtxt, tgt string, env []string) error {
-	cctx, cancel := context.WithCancel(ctx)
-	cmd, err := NewCmd(cctx, cmdtxt, env)
-	if err != nil {
-		cancel()
-		return err
-	}
-	defer func() {
-		cancel()
-		cmd.Close()
-	}()
-	for l := range cmd.Lines() {
-		out := irc.Message{Command: irc.PRIVMSG, Params: []string{tgt, l}}
-		if err := b.mc.WriteMsg(out); err != nil {
-			return err
-		}
-	}
-	return err
-}
-
-func (b *Bot) processPrivMsg(ctx context.Context, msg irc.Message) error {
+func (b *Bot) processPrivMsg(t *Task, msg irc.Message) error {
 	sender, tgt, txt := msg.Prefix.Name, msg.Params[0], msg.Params[1]
 	outtgt := tgt
 	if tgt[0] != '#' {
@@ -154,15 +168,15 @@ func (b *Bot) processPrivMsg(ctx context.Context, msg irc.Message) error {
 	}
 	cmdtxt = strings.Replace(cmdtxt, "%s", sender, -1)
 	env := append(b.Env(), "SITBOT_FROM="+sender, "SITBOT_CHAN="+tgt)
-	return b.PipeCmd(ctx, cmdtxt, outtgt, env)
+	return t.PipeCmd(cmdtxt, outtgt, env)
 }
 
-func (b *Bot) runTask(name string, f func(context.Context) error) {
-	t := time.Now()
+func (b *Bot) runTask(name string, f func(*Task) error) {
+	task := &Task{Name: name, Start: Time(time.Now()), b: b, ctx: b.ctx}
 	b.mu.Lock()
 	b.tid++
 	tid := b.tid
-	b.Tasks[tid] = Task{Name: name, Start: Time(t)}
+	b.Tasks[tid] = task
 	b.mu.Unlock()
 	b.wg.Add(1)
 	go func() {
@@ -172,7 +186,7 @@ func (b *Bot) runTask(name string, f func(context.Context) error) {
 			b.mu.Unlock()
 			b.wg.Done()
 		}()
-		f(b.ctx)
+		f(task)
 	}()
 }
 
@@ -185,15 +199,14 @@ func (b *Bot) processMsg(msg irc.Message) error {
 	case irc.PONG:
 		return nil
 	case irc.PING:
-		b.runTask("ping", func(context.Context) error {
-			return b.mc.WriteMsg(
-				irc.Message{Command: irc.PONG, Params: msg.Params})
+		b.runTask("ping", func(t *Task) error {
+			return t.Write(irc.Message{Command: irc.PONG, Params: msg.Params})
 		})
 		return nil
 	case irc.PRIVMSG:
 		if msg.Prefix != nil && len(msg.Params) > 0 {
-			b.runTask(msg.Params[1], func(ctx context.Context) error {
-				return b.processPrivMsg(ctx, msg)
+			b.runTask(msg.Params[1], func(t *Task) error {
+				return b.processPrivMsg(t, msg)
 			})
 		}
 	case irc.JOIN:
@@ -204,7 +217,7 @@ func (b *Bot) processMsg(msg irc.Message) error {
 		}
 	}
 	msgcmd := msg.Command + " " + strings.Join(msg.Params, " ")
-	b.runTask(msgcmd, func(ctx context.Context) error {
+	b.runTask(msgcmd, func(t *Task) error {
 		b.mu.RLock()
 		pm := b.pmraw
 		b.mu.RUnlock()
@@ -212,7 +225,7 @@ func (b *Bot) processMsg(msg irc.Message) error {
 		if cmdtxt == "" {
 			return nil
 		}
-		return b.PipeCmd(ctx, cmdtxt, b.Nick, b.Env())
+		return t.PipeCmd(cmdtxt, b.Nick, b.Env())
 	})
 	return nil
 }
