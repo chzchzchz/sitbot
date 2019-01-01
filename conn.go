@@ -22,7 +22,6 @@ type MsgConn struct {
 	*irc.Conn
 	MsgConnStats
 	ctx    context.Context
-	cancel context.CancelFunc
 	wg     sync.WaitGroup
 	readc  chan irc.Message
 	writec chan irc.Message
@@ -33,13 +32,12 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 	mc := &MsgConn{
 		Conn:   irc.NewConn(conn),
 		ctx:    cctx,
-		cancel: cancel,
 		readc:  make(chan irc.Message, 16),
 		writec: make(chan irc.Message, 16),
 	}
 	mc.wg.Add(2)
 	stopf := func() {
-		mc.cancel()
+		cancel()
 		mc.wg.Done()
 	}
 	go func() {
@@ -93,8 +91,7 @@ func (mc *MsgConn) WriteMsg(m irc.Message) error {
 	}
 }
 
-func (mc *MsgConn) ReadChan() <-chan irc.Message  { return mc.readc }
-func (mc *MsgConn) WriteChan() chan<- irc.Message { return mc.writec }
+func (mc *MsgConn) ReadChan() <-chan irc.Message { return mc.readc }
 
 func (mc *MsgConn) Close() error {
 	err := mc.Conn.Close()
