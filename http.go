@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"sync"
 
 	"gopkg.in/sorcix/irc.v2"
 )
@@ -16,71 +17,24 @@ import (
 type httpHandler struct {
 	g    *Gang
 	tmpl *template.Template
+	mu   sync.RWMutex
 }
-
-const tmplBot = `
-<h2>{{.Id}}</h2>
-<p>
-Nick: {{.Nick}}<br/>
-Server: {{.ServerURL}}<br/>
-Online since: {{.Start.T.Format "Mon Jan 2 15:04:05 MST 2006"}}<br/>
-Uptime: {{.Start.Elapsed}}<br/>
-Messages Sent: {{.TxMsgs}}<br/>
-Messages Received: {{.RxMsgs}}<br/>
-Channels:
-{{range .Channels}}
-{{.}}
-{{end}}
-<br/>
-
-Tasks:
-<table>
-<tr><td>Task</td><td>Wall Time</td></tr>
-{{range .Tasks}}
-<tr>
-	<td>{{.Name}}</td>
-	<td>{{.Elapsed}}</td>
-</tr>
-{{end}}
-</table>
-
-Patterns:
-<table>
-{{range .Patterns}}
-<tr>
-	<td style="border: 1px solid blue;">{{.Match}}</td>
-	<td>&rarr;</td>
-	<td style="border: 1px solid red;">{{.Template}}</td>
-</tr>
-{{end}}
-</table>
-
-Raw Patterns:
-<table>
-{{range .PatternsRaw}}
-<tr>
-	<td style="border: 1px solid blue;">{{.Match}}</td>
-	<td>&rarr;</td>
-	<td style="border: 1px solid red;">{{.Template}}</td>
-</tr>
-{{end}}
-</table>
-</p>
-<hr/>
-`
 
 func ServeHttp(g *Gang, serv string) error {
 	h := &httpHandler{
 		g:    g,
-		tmpl: template.Must(template.New("bot").Parse(tmplBot)),
+		tmpl: template.Must(template.New("bot").Parse("")),
 	}
 	return http.ListenAndServe(serv, h)
 }
 
 func (h *httpHandler) handleGet(w http.ResponseWriter, r *http.Request) {
+	h.mu.RLock()
+	tmpl := h.tmpl
+	h.mu.RUnlock()
 	io.WriteString(w, "<html><title>bot report</title><body><h1>Active Bot Report</h1>")
 	for _, b := range h.g.bots {
-		if err := h.tmpl.Execute(w, b); err != nil {
+		if err := tmpl.Execute(w, b); err != nil {
 			io.WriteString(w, err.Error())
 			return
 		}
@@ -125,12 +79,22 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "/":
-		p, err := UnmarshalProfile(b)
-		if err != nil {
-			return
-		}
-		if err = h.g.Post(*p); err != nil {
-			return
+		if f == "tmpl" {
+			tmpl, err := template.New("bot").Parse(string(b))
+			if err != nil {
+				return
+			}
+			h.mu.Lock()
+			h.tmpl = tmpl
+			h.mu.Unlock()
+		} else {
+			p, err := UnmarshalProfile(b)
+			if err != nil {
+				return
+			}
+			if err = h.g.Post(*p); err != nil {
+				return
+			}
 		}
 	}
 	io.WriteString(w, "OK")
