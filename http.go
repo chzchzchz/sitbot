@@ -34,7 +34,10 @@ func (h *httpHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	h.mu.RUnlock()
 	io.WriteString(w, "<html><title>bot report</title><body><h1>Active Bot Report</h1>")
 	for _, b := range h.g.bots {
-		if err := tmpl.Execute(w, b); err != nil {
+		b.mu.RLock()
+		err := tmpl.Execute(w, b)
+		b.mu.RUnlock()
+		if err != nil {
 			io.WriteString(w, err.Error())
 			return
 		}

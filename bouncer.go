@@ -121,19 +121,20 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 		}
 	}
 	nnpfx2 := &irc.Prefix{Name: nnick}
-	for _, c := range b.bot.Channels() {
-		msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{c}}
-		if err := mc.WriteMsg(msg); err != nil {
-			return err
-		}
+	b.bot.mu.RLock()
+	for c := range b.bot.Channels {
 		// Have chat server return names list for channel as if joined.
 		wg.Add(1)
 		go func(chn string) {
 			defer wg.Done()
-			msg := irc.Message{Command: irc.NAMES, Params: []string{chn}}
+			msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{c}}
+			mc.WriteMsg(msg)
+			msg = irc.Message{Command: irc.NAMES, Params: []string{chn}}
 			b.bot.mc.WriteMsg(msg)
 		}(c)
 	}
+	b.bot.mu.RUnlock()
+
 	brc, bdc := b.bot.mc.NewReadChan()
 	defer close(bdc)
 	for {

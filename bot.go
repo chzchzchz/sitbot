@@ -10,14 +10,10 @@ import (
 	"gopkg.in/sorcix/irc.v2"
 )
 
-type taskContextKey string
-
-const taskContextKeyTask = taskContextKey("task")
-
 type Time time.Time
 
-func (t *Time) Elapsed() time.Duration { return time.Since(t.T()) }
-func (t *Time) T() time.Time           { return time.Time(*t) }
+func (t Time) Elapsed() time.Duration { return time.Since(t.T()) }
+func (t Time) T() time.Time           { return time.Time(t) }
 
 type Task struct {
 	Name  string
@@ -26,8 +22,8 @@ type Task struct {
 
 type Bot struct {
 	Profile
-	Start Time
-	chans map[string]struct{}
+	Start    Time
+	Channels map[string]struct{}
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -35,7 +31,9 @@ type Bot struct {
 	mc *TeeMsgConn
 	wg sync.WaitGroup
 
-	tasks    map[context.Context]time.Time
+	Tasks map[uint64]Task
+	tid   uint64
+
 	welcomec chan struct{}
 	netpfx   *irc.Prefix
 
@@ -43,24 +41,6 @@ type Bot struct {
 	pmraw *PatternMatcher
 
 	mu sync.RWMutex
-}
-
-func (b *Bot) Tasks() (ret []Task) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	for c, t := range b.tasks {
-		ret = append(ret, Task{c.Value(taskContextKeyTask).(string), Time(t)})
-	}
-	return ret
-}
-
-func (b *Bot) Channels() (ret []string) {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	for c := range b.chans {
-		ret = append(ret, c)
-	}
-	return ret
 }
 
 func (b *Bot) Update(p Profile) error {
@@ -81,10 +61,10 @@ func (b *Bot) Update(p Profile) error {
 
 func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 	b = &Bot{Profile: p,
-		chans:    make(map[string]struct{}),
-		welcomec: make(chan struct{}),
-		tasks:    make(map[context.Context]time.Time),
 		Start:    Time(time.Now()),
+		Channels: make(map[string]struct{}),
+		Tasks:    make(map[uint64]Task),
+		welcomec: make(chan struct{}),
 	}
 	if err = b.Update(b.Profile); err != nil {
 		return nil, err
@@ -123,11 +103,9 @@ func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 		return nil, ctx.Err()
 	}
 	for _, ch := range p.Chans {
-		b.wg.Add(1)
-		go func(chn string) {
-			defer b.wg.Done()
-			b.mc.WriteMsg(irc.Message{Command: irc.JOIN, Params: []string{chn}})
-		}(ch)
+		b.runTask("JOIN", func(ctx context.Context) error {
+			return b.mc.WriteMsg(irc.Message{Command: irc.JOIN, Params: []string{ch}})
+		})
 	}
 	return b, nil
 }
@@ -179,20 +157,22 @@ func (b *Bot) processPrivMsg(ctx context.Context, msg irc.Message) error {
 	return b.PipeCmd(ctx, cmdtxt, outtgt, env)
 }
 
-func (b *Bot) runTask(ctx context.Context, f func(context.Context) error) {
+func (b *Bot) runTask(name string, f func(context.Context) error) {
 	t := time.Now()
 	b.mu.Lock()
-	b.tasks[ctx] = t
+	b.tid++
+	tid := b.tid
+	b.Tasks[tid] = Task{Name: name, Start: Time(t)}
 	b.mu.Unlock()
 	b.wg.Add(1)
 	go func() {
 		defer func() {
 			b.mu.Lock()
-			delete(b.tasks, ctx)
+			delete(b.Tasks, tid)
 			b.mu.Unlock()
 			b.wg.Done()
 		}()
-		f(ctx)
+		f(b.ctx)
 	}()
 }
 
@@ -202,36 +182,33 @@ func (b *Bot) processMsg(msg irc.Message) error {
 	case irc.RPL_WELCOME:
 		b.netpfx = msg.Prefix
 		close(b.welcomec)
-		fallthrough
 	case irc.PONG:
 		return nil
 	case irc.PING:
-		tctx := context.WithValue(b.ctx, taskContextKeyTask, "ping")
-		b.runTask(tctx, func(context.Context) error {
+		b.runTask("ping", func(context.Context) error {
 			return b.mc.WriteMsg(
 				irc.Message{Command: irc.PONG, Params: msg.Params})
 		})
 		return nil
 	case irc.PRIVMSG:
 		if msg.Prefix != nil && len(msg.Params) > 0 {
-			tctx := context.WithValue(b.ctx, taskContextKeyTask, msg.Params[1])
-			b.runTask(tctx, func(ctx context.Context) error {
+			b.runTask(msg.Params[1], func(ctx context.Context) error {
 				return b.processPrivMsg(ctx, msg)
 			})
 		}
 	case irc.JOIN:
 		if len(msg.Params) > 0 {
 			b.mu.Lock()
-			b.chans[msg.Params[0]] = struct{}{}
+			b.Channels[msg.Params[0]] = struct{}{}
 			b.mu.Unlock()
 		}
 	}
-	tctx := context.WithValue(b.ctx, taskContextKeyTask, strings.Join(msg.Params, " "))
-	b.runTask(tctx, func(ctx context.Context) error {
+	msgcmd := msg.Command + " " + strings.Join(msg.Params, " ")
+	b.runTask(msgcmd, func(ctx context.Context) error {
 		b.mu.RLock()
 		pm := b.pmraw
 		b.mu.RUnlock()
-		cmdtxt := pm.Apply(msg.Command + " " + strings.Join(msg.Params, " "))
+		cmdtxt := pm.Apply(msgcmd)
 		if cmdtxt == "" {
 			return nil
 		}
