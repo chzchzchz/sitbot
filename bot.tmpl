@@ -13,18 +13,18 @@ Channels:
 <br/>
 
 Tasks:
-<table>
+<table style="margin-left: 1em;">
 <tr><td>Task</td><td>Wall Time</td></tr>
 {{range $tid, $task := .Tasks}}
 <tr>
 	<td>{{$task.Name}}</td>
-	<td>{{$task.Start.Elapsed}}</td>
+	<td style="text-align: right;">{{$task.Start.Elapsed}}</td>
 </tr>
 {{end}}
 </table>
 
 Patterns:
-<table>
+<table style="margin-left: 1em;">
 {{range .Patterns}}
 <tr>
 	<td style="border: 1px solid blue;">{{.Match}}</td>
@@ -35,7 +35,7 @@ Patterns:
 </table>
 
 Raw Patterns:
-<table>
+<table style="margin-left: 1em;">
 {{range .PatternsRaw}}
 <tr>
 	<td style="border: 1px solid blue;">{{.Match}}</td>

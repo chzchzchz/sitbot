@@ -12,7 +12,7 @@ import (
 
 type Time time.Time
 
-func (t Time) Elapsed() time.Duration { return time.Since(t.T()) }
+func (t Time) Elapsed() time.Duration { return time.Since(t.T()).Round(time.Second) }
 func (t Time) T() time.Time           { return time.Time(t) }
 
 type Task struct {
