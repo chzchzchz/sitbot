@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"os"
+
+	"github.com/chzchzchz/sitbot/bot"
 )
 
 func main() {
@@ -12,7 +14,7 @@ func main() {
 	}
 	os.Setenv("SITBOT_URL", "http://"+laddr)
 	log.Println("serving bot on", laddr)
-	if err := ServeHttp(NewGang(), laddr); err != nil {
+	if err := bot.ServeHttp(bot.NewGang(), laddr); err != nil {
 		panic(err)
 	}
 }
