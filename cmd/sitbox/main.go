@@ -3,8 +3,10 @@ package main
 import (
 	"bufio"
 	"context"
+	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -19,6 +21,9 @@ type Cmd struct {
 }
 
 func NewCmd(ctx context.Context, cmdname, args string) (*Cmd, error) {
+	if strings.Contains(cmdname, "/") {
+		return nil, io.EOF
+	}
 	donec, linec := make(chan struct{}), make(chan string, 5)
 	cmd := exec.CommandContext(ctx, "scripts/"+cmdname, args)
 	stdout, err := cmd.StdoutPipe()
@@ -68,7 +73,9 @@ func main() {
 	ctx, cancel := context.WithCancel(context.TODO())
 	cmd, err := NewCmd(ctx, os.Args[1], os.Args[2])
 	if err != nil {
-		panic(err)
+		cancel()
+		os.Stdout.WriteString(err.Error())
+		return
 	}
 	defer func() {
 		cancel()
