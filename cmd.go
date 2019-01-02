@@ -23,8 +23,7 @@ func NewCmd(ctx context.Context, cmdtxt string, env []string) (*Cmd, error) {
 	if len(toks) > 1 {
 		cmdargs = strings.Join(toks[1:], " ")
 	}
-	cmdpath := filepath.Join("scripts", cmdname)
-	cmd := exec.CommandContext(ctx, cmdpath, cmdargs)
+	cmd := exec.CommandContext(ctx, "scripts/sandbox", cmdname, cmdargs)
 	cmd.Env = append(os.Environ(), env...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

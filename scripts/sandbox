@@ -1,0 +1,4 @@
+#!/bin/bash
+# limit at 1024KB * 512
+ulimit -v 524288
+exec scripts/"$1" "$2"
