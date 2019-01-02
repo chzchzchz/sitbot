@@ -1,0 +1,9 @@
+#!/usr/bin/python3
+import sys
+num_hues=12
+num_shades=7
+for hue in range(0,num_hues):
+    s = ""
+    for shade in range(0,num_shades):
+        s = s + chr(0x03)+"0,"+str(16+hue+(shade*num_hues))+"  "
+    print(s)
