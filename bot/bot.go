@@ -44,7 +44,13 @@ func (t *Task) Write(msg irc.Message) error {
 func (t *Task) PipeCmd(cmdtxt, tgt string, env []string) error {
 	cctx, cancel := context.WithCancel(t.ctx)
 	tidenv := fmt.Sprintf("SITBOT_TID=%d", t.tid)
-	cmd, err := NewCmd(cctx, cmdtxt, append(env, tidenv))
+	toks := strings.Split(cmdtxt, " ")
+	cmdname, cmdargs := strings.Replace(toks[0], "/", "_", -1), ""
+	if len(toks) > 1 {
+		cmdargs = strings.Join(toks[1:], " ")
+	}
+	env = append(env, tidenv)
+	cmd, err := NewCmd(cctx, "scripts/sandbox", []string{cmdname, cmdargs}, env)
 	if err != nil {
 		cancel()
 		return err

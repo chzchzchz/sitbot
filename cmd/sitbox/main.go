@@ -1,83 +1,29 @@
 package main
 
 import (
-	"bufio"
 	"context"
-	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/chzchzchz/sitbot/bot"
 )
 
 const BackoffBase = time.Second
 const BackoffMul = 2
 const LineTimeout = 5 * time.Second
 
-type Cmd struct {
-	donec  chan struct{}
-	linec  chan string
-	err    error
-	closer io.Closer
-}
-
-func NewCmd(ctx context.Context, cmdname, args string) (*Cmd, error) {
-	if strings.Contains(cmdname, "/") {
-		return nil, io.EOF
-	}
-	donec, linec := make(chan struct{}), make(chan string, 5)
-	cmd := exec.CommandContext(ctx, "scripts/"+cmdname, args)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-	c := &Cmd{donec: donec, linec: linec, closer: stdout}
-	lr := bufio.NewReader(stdout)
-	go func() {
-		defer func() {
-			close(linec)
-			stdout.Close()
-			if err := cmd.Wait(); err != nil {
-				c.err = err
-			}
-			close(donec)
-		}()
-		for {
-			l, err := lr.ReadString('\n')
-			if err != nil {
-				c.err = err
-				if l == "" {
-					break
-				}
-			}
-			select {
-			case linec <- l:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-	return c, nil
-}
-
-func (c *Cmd) Lines() <-chan string { return c.linec }
-
-func (c *Cmd) Close() error {
-	c.closer.Close()
-	<-c.donec
-	return c.err
-}
-
 func main() {
+	if strings.Contains(os.Args[1], "/") {
+		os.Exit(1)
+	}
 	ctx, cancel := context.WithCancel(context.TODO())
-	cmd, err := NewCmd(ctx, os.Args[1], os.Args[2])
+	cmdname := "scripts/" + os.Args[1]
+	cmd, err := bot.NewCmd(ctx, cmdname, []string{os.Args[2]}, nil)
 	if err != nil {
 		cancel()
 		os.Stdout.WriteString(err.Error())
-		return
+		os.Exit(1)
 	}
 	defer func() {
 		cancel()

@@ -3,26 +3,22 @@ package bot
 import (
 	"bufio"
 	"context"
+	"io"
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 type Cmd struct {
-	donec chan struct{}
-	linec chan string
-	err   error
+	donec  chan struct{}
+	linec  chan string
+	err    error
+	closer io.Closer
 }
 
-func NewCmd(ctx context.Context, cmdtxt string, env []string) (*Cmd, error) {
+func NewCmd(ctx context.Context, cmdname string, args []string, env []string) (*Cmd, error) {
 	donec, linec := make(chan struct{}), make(chan string, 5)
-	toks := strings.Split(cmdtxt, " ")
-	cmdname, cmdargs := strings.Replace(toks[0], "/", "_", -1), ""
-	if len(toks) > 1 {
-		cmdargs = strings.Join(toks[1:], " ")
-	}
-	cmd := exec.CommandContext(ctx, "scripts/sandbox", cmdname, cmdargs)
+	cmd := exec.CommandContext(ctx, cmdname, args...)
 	cmd.Env = append(os.Environ(), env...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -32,7 +28,7 @@ func NewCmd(ctx context.Context, cmdtxt string, env []string) (*Cmd, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	c := &Cmd{donec: donec, linec: linec}
+	c := &Cmd{donec: donec, linec: linec, closer: stdout}
 	lr := bufio.NewReader(stdout)
 	go func() {
 		defer func() {
@@ -64,6 +60,7 @@ func NewCmd(ctx context.Context, cmdtxt string, env []string) (*Cmd, error) {
 func (c *Cmd) Lines() <-chan string { return c.linec }
 
 func (c *Cmd) Close() error {
+	c.closer.Close()
 	<-c.donec
 	return c.err
 }
