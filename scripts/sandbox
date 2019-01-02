@@ -1,4 +1,7 @@
 #!/bin/bash
 # limit at 1024KB * 512
 ulimit -v 524288
+if [[ "$1" =~ ".super" ]]; then
+	exec scripts/"$1" "$2"
+fi
 exec ./sitbox "$1" "$2"

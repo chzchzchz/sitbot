@@ -11,7 +11,6 @@
  "PatternsRaw":
  [
 	{"Match" : "^[^\\s]+\\s+INVITE\\s+(?P<sender>[^\\s]+)\\s+(?P<ch>#\\w+)", "Template" : "join $ch"},
-	{"Match" : "^(?P<user>[^\\s@!]+)[^\\s]*\\s+JOIN\\s+#sitbot$", "Template" : "msg #sitbot echo $user! WELCOME TO #SITBOT"}
+	{"Match" : "^(?P<user>[^\\s@!]+)[^\\s]*\\s+JOIN\\s+#sitbot$", "Template" : "msg.super #sitbot echo $user! WELCOME TO #SITBOT"}
  ]
-
 }
