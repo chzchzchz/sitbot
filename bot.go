@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/time/rate"
 	"gopkg.in/sorcix/irc.v2"
 )
 
@@ -17,12 +18,13 @@ func (t Time) Elapsed() time.Duration { return time.Since(t.T()).Round(time.Seco
 func (t Time) T() time.Time           { return time.Time(t) }
 
 type Task struct {
-	Name   string
-	Start  Time
-	lines  uint32
-	b      *Bot
-	ctx    context.Context
-	cancel context.CancelFunc
+	Name    string
+	Start   Time
+	Command string
+	lines   uint32
+	b       *Bot
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func (t *Task) Lines() uint32 { return atomic.LoadUint32(&t.lines) }
@@ -60,8 +62,9 @@ type Bot struct {
 	Start    Time
 	Channels map[string]struct{}
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx     context.Context
+	cancel  context.CancelFunc
+	limiter *rate.Limiter
 
 	mc *TeeMsgConn
 	wg sync.WaitGroup
@@ -102,6 +105,7 @@ func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 		Channels: make(map[string]struct{}),
 		Tasks:    make(map[uint64]*Task),
 		welcomec: make(chan struct{}),
+		limiter:  rate.NewLimiter(rate.Every(time.Second), 1),
 	}
 	if err = b.Update(b.Profile); err != nil {
 		return nil, err
@@ -140,7 +144,7 @@ func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 		return nil, ctx.Err()
 	}
 	for _, ch := range p.Chans {
-		b.runTask("JOIN", func(t *Task) error {
+		b.runTask("JOIN", "JOIN", nil, func(t *Task) error {
 			return t.Write(irc.Message{Command: irc.JOIN, Params: []string{ch}})
 		})
 	}
@@ -157,27 +161,20 @@ func (b *Bot) Env() []string {
 }
 
 func (b *Bot) processPrivMsg(t *Task, msg irc.Message) error {
-	sender, tgt, txt := msg.Prefix.Name, msg.Params[0], msg.Params[1]
+	sender, tgt := msg.Prefix.Name, msg.Params[0]
 	outtgt := tgt
 	if tgt[0] != '#' {
 		outtgt = sender
 	}
-	b.mu.RLock()
-	pm := b.pm
-	b.mu.RUnlock()
-	cmdtxt := pm.Apply(txt)
-	if cmdtxt == "" {
-		return nil
-	}
-	cmdtxt = strings.Replace(cmdtxt, "%s", sender, -1)
+	cmdtxt := strings.Replace(t.Command, "%s", sender, -1)
 	env := append(b.Env(), "SITBOT_FROM="+sender, "SITBOT_CHAN="+tgt)
 	return t.PipeCmd(cmdtxt, outtgt, env)
 }
 
-func (b *Bot) runTask(name string, f func(*Task) error) {
+func (b *Bot) runTask(name, cmdtxt string, pm **PatternMatcher, f func(*Task) error) {
 	cctx, cancel := context.WithCancel(b.ctx)
 	task := &Task{
-		Name: name, Start: Time(time.Now()),
+		Name: name, Start: Time(time.Now()), Command: cmdtxt,
 		b: b, ctx: cctx, cancel: cancel}
 	b.mu.Lock()
 	b.tid++
@@ -192,8 +189,20 @@ func (b *Bot) runTask(name string, f func(*Task) error) {
 			b.mu.Unlock()
 			b.wg.Done()
 		}()
-		f(task)
+		if pm != nil {
+			task.Command = b.tryPatternMatch(task.Command, pm)
+		}
+		if task.Command != "" && b.limiter.Wait(cctx) == nil {
+			f(task)
+		}
 	}()
+}
+
+func (b *Bot) tryPatternMatch(txt string, pm **PatternMatcher) string {
+	b.mu.RLock()
+	p := *pm
+	b.mu.RUnlock()
+	return p.Apply(txt)
 }
 
 func (b *Bot) processMsg(msg irc.Message) error {
@@ -205,15 +214,14 @@ func (b *Bot) processMsg(msg irc.Message) error {
 	case irc.PONG:
 		return nil
 	case irc.PING:
-		b.runTask("ping", func(t *Task) error {
+		b.runTask("ping", "PING", nil, func(t *Task) error {
 			return t.Write(irc.Message{Command: irc.PONG, Params: msg.Params})
 		})
 		return nil
 	case irc.PRIVMSG:
 		if msg.Prefix != nil && len(msg.Params) > 0 {
-			b.runTask(msg.Params[1], func(t *Task) error {
-				return b.processPrivMsg(t, msg)
-			})
+			tf := func(t *Task) error { return b.processPrivMsg(t, msg) }
+			b.runTask(msg.Params[1], msg.Params[1], &b.pm, tf)
 		}
 	case irc.JOIN:
 		if len(msg.Params) > 0 {
@@ -223,15 +231,8 @@ func (b *Bot) processMsg(msg irc.Message) error {
 		}
 	}
 	msgcmd := msg.Command + " " + strings.Join(msg.Params, " ")
-	b.runTask(msgcmd, func(t *Task) error {
-		b.mu.RLock()
-		pm := b.pmraw
-		b.mu.RUnlock()
-		cmdtxt := pm.Apply(msgcmd)
-		if cmdtxt == "" {
-			return nil
-		}
-		return t.PipeCmd(cmdtxt, b.Nick, b.Env())
+	b.runTask(msgcmd, msgcmd, &b.pmraw, func(t *Task) error {
+		return t.PipeCmd(t.Command, b.Nick, b.Env())
 	})
 	return nil
 }
