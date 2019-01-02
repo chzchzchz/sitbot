@@ -38,7 +38,7 @@ curl localhost:12345 -XPOST -d@profile.json
 Reposting a bot profile will update the bot's pattern matching rules.
 
 Configure a control panel page:
-``sh
+```sh
 curl localhost:12345/tmpl -XPOST -d@bot.tmpl
 ```
 Any connected bots will be viewable via the generated HTML at `http://localhost:12345/`.
