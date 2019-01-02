@@ -7,12 +7,24 @@ import (
 )
 
 type Gang struct {
-	bots map[string]*Bot
-	mu   sync.Mutex
+	Bots map[string]*Bot
+	mu   sync.RWMutex
 }
 
-func NewGang() *Gang {
-	return &Gang{bots: make(map[string]*Bot)}
+func NewGang() *Gang { return &Gang{Bots: make(map[string]*Bot)} }
+
+func (g *Gang) LockBots() {
+	g.mu.RLock()
+	for _, b := range g.Bots {
+		b.mu.RLock()
+	}
+}
+
+func (g *Gang) UnlockBots() {
+	for _, b := range g.Bots {
+		b.mu.RUnlock()
+	}
+	g.mu.RUnlock()
 }
 
 func (g *Gang) Post(p Profile) error {
@@ -24,8 +36,8 @@ func (g *Gang) Post(p Profile) error {
 		return err
 	}
 	g.mu.Lock()
-	ob := g.bots[p.Id]
-	g.bots[p.Id] = bot
+	ob := g.Bots[p.Id]
+	g.Bots[p.Id] = bot
 	g.mu.Unlock()
 	if ob != nil {
 		ob.Close()
@@ -35,9 +47,9 @@ func (g *Gang) Post(p Profile) error {
 
 func (g *Gang) Delete(id string) error {
 	g.mu.Lock()
-	b, ok := g.bots[id]
+	b, ok := g.Bots[id]
 	if ok {
-		delete(g.bots, id)
+		delete(g.Bots, id)
 	}
 	g.mu.Unlock()
 	if !ok {
@@ -50,12 +62,5 @@ func (g *Gang) Delete(id string) error {
 func (g *Gang) Lookup(id string) *Bot {
 	defer g.mu.Unlock()
 	g.mu.Lock()
-	return g.bots[id]
-}
-
-func (g *Gang) Close() {
-	for _, b := range g.bots {
-		b.Close()
-	}
-	g.bots = nil
+	return g.Bots[id]
 }

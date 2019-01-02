@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -32,17 +31,12 @@ func (h *httpHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	h.mu.RLock()
 	tmpl := h.tmpl
 	h.mu.RUnlock()
-	io.WriteString(w, "<html><title>bot report</title><body><h1>Active Bot Report</h1>")
-	for _, b := range h.g.bots {
-		b.mu.RLock()
-		err := tmpl.Execute(w, b)
-		b.mu.RUnlock()
-		if err != nil {
-			io.WriteString(w, err.Error())
-			return
-		}
+	h.g.LockBots()
+	defer h.g.UnlockBots()
+	if err := tmpl.Execute(w, h.g); err != nil {
+		io.WriteString(w, err.Error())
+		return
 	}
-	io.WriteString(w, fmt.Sprintf("Total bots: %d</body></html>", len(h.g.bots)))
 }
 
 type BotPostMessage struct {

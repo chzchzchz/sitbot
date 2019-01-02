@@ -1,3 +1,5 @@
+<html><title>bot report</title><body><h1>Active Bot Report</h1>
+{{range .Bots}}
 <h2>{{.Id}}</h2>
 <p>
 Nick: {{.Nick}}<br/>
@@ -47,3 +49,7 @@ Raw Patterns:
 </table>
 </p>
 <hr/>
+{{end}}
+
+Total bots: {{len .Bots}}
+</body></html>
