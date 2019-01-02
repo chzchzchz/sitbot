@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -15,8 +16,8 @@ type MsgConnStats struct {
 	rxMsgs uint64
 }
 
-func (m *MsgConnStats) TxMsgs() uint64 { return m.txMsgs }
-func (m *MsgConnStats) RxMsgs() uint64 { return m.rxMsgs }
+func (m *MsgConnStats) TxMsgs() uint64 { return atomic.LoadUint64(&m.txMsgs) }
+func (m *MsgConnStats) RxMsgs() uint64 { return atomic.LoadUint64(&m.rxMsgs) }
 
 type MsgConn struct {
 	*irc.Conn
@@ -53,7 +54,7 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 			}
 			select {
 			case mc.readc <- *msg:
-				mc.rxMsgs++
+				atomic.AddUint64(&mc.rxMsgs, 1)
 			case <-mc.ctx.Done():
 			}
 		}
@@ -70,7 +71,7 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 			}
 			select {
 			case msg := <-mc.writec:
-				mc.txMsgs++
+				atomic.AddUint64(&mc.txMsgs, 1)
 				if mc.Encode(&msg) != nil {
 					return
 				}
