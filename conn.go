@@ -34,7 +34,7 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 		Conn:   irc.NewConn(conn),
 		ctx:    cctx,
 		readc:  make(chan irc.Message, 16),
-		writec: make(chan irc.Message, 16),
+		writec: make(chan irc.Message),
 	}
 	mc.wg.Add(2)
 	stopf := func() {
