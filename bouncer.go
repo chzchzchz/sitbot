@@ -24,7 +24,7 @@ func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(bot.Ctx())
 	b := &Bouncer{
 		ln:     ln,
 		ctx:    ctx,
@@ -33,10 +33,15 @@ func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
 	b.wg.Add(1)
 	go func() {
 		defer func() {
+			ln.Close()
 			cancel()
 			b.wg.Done()
 		}()
 		for {
+			select {
+			case <-ctx.Done():
+			default:
+			}
 			conn, err := ln.Accept()
 			if err != nil {
 				log.Println(err)
@@ -50,11 +55,8 @@ func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
 			b.wg.Add(1)
 			go func() {
 				defer b.wg.Done()
-				if err := b.handleConn(mc); err != nil {
-					log.Printf("bouncer closing %v (%v)",
-						conn.RemoteAddr(),
-						err)
-				}
+				err := b.handleConn(mc)
+				log.Printf("bouncer closing %v (%v)", conn.RemoteAddr(), err)
 			}()
 		}
 	}()
@@ -83,8 +85,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 		return io.EOF
 	}
 	date := time.Now().Format("Mon Jan 2 15:04:05 -0700 MST 2006")
-	nnick := b.bot.Nick + "!bot@masked"
-	nnpfx := b.bot.netpfx
+	nnick, nnpfx := b.bot.Nick+"!bot@masked", b.bot.netpfx
 	nn := b.bot.netpfx.String()
 	for _, msg := range []irc.Message{
 		{

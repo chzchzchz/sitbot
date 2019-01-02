@@ -17,11 +17,12 @@ func (t Time) Elapsed() time.Duration { return time.Since(t.T()).Round(time.Seco
 func (t Time) T() time.Time           { return time.Time(t) }
 
 type Task struct {
-	Name  string
-	Start Time
-	lines uint32
-	b     *Bot
-	ctx   context.Context
+	Name   string
+	Start  Time
+	lines  uint32
+	b      *Bot
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (t *Task) Lines() uint32 { return atomic.LoadUint32(&t.lines) }
@@ -76,6 +77,8 @@ type Bot struct {
 
 	mu sync.RWMutex
 }
+
+func (b *Bot) Ctx() context.Context { return b.ctx }
 
 func (b *Bot) Update(p Profile) error {
 	pm, err := NewPatternMatcher(p.Patterns)
@@ -172,7 +175,10 @@ func (b *Bot) processPrivMsg(t *Task, msg irc.Message) error {
 }
 
 func (b *Bot) runTask(name string, f func(*Task) error) {
-	task := &Task{Name: name, Start: Time(time.Now()), b: b, ctx: b.ctx}
+	cctx, cancel := context.WithCancel(b.ctx)
+	task := &Task{
+		Name: name, Start: Time(time.Now()),
+		b: b, ctx: cctx, cancel: cancel}
 	b.mu.Lock()
 	b.tid++
 	tid := b.tid
