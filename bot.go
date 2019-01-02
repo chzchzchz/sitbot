@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"strings"
 	"sync"
@@ -17,10 +19,12 @@ type Time time.Time
 func (t Time) Elapsed() time.Duration { return time.Since(t.T()).Round(time.Second) }
 func (t Time) T() time.Time           { return time.Time(t) }
 
+type TaskId uint64
 type Task struct {
 	Name    string
 	Start   Time
 	Command string
+	tid     TaskId
 	lines   uint32
 	b       *Bot
 	ctx     context.Context
@@ -39,7 +43,8 @@ func (t *Task) Write(msg irc.Message) error {
 
 func (t *Task) PipeCmd(cmdtxt, tgt string, env []string) error {
 	cctx, cancel := context.WithCancel(t.ctx)
-	cmd, err := NewCmd(cctx, cmdtxt, env)
+	tidenv := fmt.Sprintf("SITBOT_TID=%d", t.tid)
+	cmd, err := NewCmd(cctx, cmdtxt, append(env, tidenv))
 	if err != nil {
 		cancel()
 		return err
@@ -69,8 +74,8 @@ type Bot struct {
 	mc *TeeMsgConn
 	wg sync.WaitGroup
 
-	Tasks map[uint64]*Task
-	tid   uint64
+	Tasks map[TaskId]*Task
+	tid   TaskId
 
 	welcomec chan struct{}
 	netpfx   *irc.Prefix
@@ -103,7 +108,7 @@ func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 	b = &Bot{Profile: p,
 		Start:    Time(time.Now()),
 		Channels: make(map[string]struct{}),
-		Tasks:    make(map[uint64]*Task),
+		Tasks:    make(map[TaskId]*Task),
 		welcomec: make(chan struct{}),
 		limiter:  rate.NewLimiter(rate.Every(time.Second), 1),
 	}
@@ -171,6 +176,19 @@ func (b *Bot) processPrivMsg(t *Task, msg irc.Message) error {
 	return t.PipeCmd(cmdtxt, outtgt, env)
 }
 
+func (b *Bot) Write(tid TaskId, msg irc.Message) error {
+	if tid == 0 {
+		return b.mc.WriteMsg(msg)
+	}
+	b.mu.RLock()
+	t, ok := b.Tasks[tid]
+	b.mu.RUnlock()
+	if !ok {
+		return io.EOF
+	}
+	return t.Write(msg)
+}
+
 func (b *Bot) runTask(name, cmdtxt string, pm **PatternMatcher, f func(*Task) error) {
 	cctx, cancel := context.WithCancel(b.ctx)
 	task := &Task{
@@ -180,6 +198,7 @@ func (b *Bot) runTask(name, cmdtxt string, pm **PatternMatcher, f func(*Task) er
 	b.tid++
 	tid := b.tid
 	b.Tasks[tid] = task
+	task.tid = tid
 	b.mu.Unlock()
 	b.wg.Add(1)
 	go func() {
@@ -231,6 +250,9 @@ func (b *Bot) processMsg(msg irc.Message) error {
 		}
 	}
 	msgcmd := msg.Command + " " + strings.Join(msg.Params, " ")
+	if msg.Prefix != nil {
+		msgcmd = msg.Prefix.String() + " " + msgcmd
+	}
 	b.runTask(msgcmd, msgcmd, &b.pmraw, func(t *Task) error {
 		return t.PipeCmd(t.Command, b.Nick, b.Env())
 	})

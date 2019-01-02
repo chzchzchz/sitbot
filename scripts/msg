@@ -1,0 +1,11 @@
+#!/bin/bash
+set -eox pipefail
+ch=`echo "$1" | cut -f1 -d' ' | grep '#'`
+cmd=`echo "$1" | cut -f2 -d' '`
+msg=`echo "$1" | cut -f3- -d' '`
+IFS=""
+./sitbox "$cmd" "$msg" | \
+	python3 -u -c 'exec("import json, sys\nfor l in sys.stdin: print(json.dumps(l));")' | \
+	while read -r l; do
+	curl ${SITBOT_URL}/bot/${SITBOT_ID} -XPOST -d'{"Command" : "PRIVMSG", "Params" : ["'${ch}'",'"${l}"'], "TaskId" : '"${SITBOT_TID}"'}' >/dev/null 2>&1
+done

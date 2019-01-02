@@ -45,6 +45,11 @@ func (h *httpHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, fmt.Sprintf("Total bots: %d</body></html>", len(h.g.bots)))
 }
 
+type BotPostMessage struct {
+	TaskId TaskId
+	irc.Message
+}
+
 func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 	var err error
 	defer func() {
@@ -69,7 +74,7 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "/bot/":
-		m := &irc.Message{}
+		m := &BotPostMessage{}
 		if err = json.Unmarshal(b, m); err != nil {
 			return
 		}
@@ -78,7 +83,7 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 			err = io.EOF
 			return
 		}
-		if err = bot.mc.WriteMsg(*m); err != nil {
+		if err = bot.Write(m.TaskId, m.Message); err != nil {
 			return
 		}
 	case "/":
