@@ -18,7 +18,7 @@ good bot
 
 Launch `sitbot` to listen on `localhost:12345`:
 ```sh
-go get github.com/chzchzchz/sitbot
+go get github.com/chzchzchz/sitbot/cmd/sitbot
 go get github.com/chzchzchz/sitbot/cmd/sitbox
 sitbot localhost:12345 &
 ```

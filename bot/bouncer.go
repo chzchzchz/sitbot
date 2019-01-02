@@ -25,11 +25,7 @@ func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(bot.Ctx())
-	b := &Bouncer{
-		ln:     ln,
-		ctx:    ctx,
-		cancel: cancel,
-		bot:    bot}
+	b := &Bouncer{ln: ln, ctx: ctx, cancel: cancel, bot: bot}
 	b.wg.Add(1)
 	go func() {
 		defer func() {
@@ -149,8 +145,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 				return io.EOF
 			}
 			if msg.Command == irc.PING {
-				tgtmc = mc
-				msg.Command = irc.PONG
+				msg.Command, tgtmc = irc.PONG, mc
 				break
 			}
 			tgtmc = b.bot.mc.MsgConn
