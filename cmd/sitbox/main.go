@@ -15,9 +15,10 @@ const BackoffMul = 2
 const LineTimeout = 5 * time.Second
 
 type Cmd struct {
-	donec chan struct{}
-	linec chan string
-	err   error
+	donec  chan struct{}
+	linec  chan string
+	err    error
+	closer io.Closer
 }
 
 func NewCmd(ctx context.Context, cmdname, args string) (*Cmd, error) {
@@ -33,7 +34,7 @@ func NewCmd(ctx context.Context, cmdname, args string) (*Cmd, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
-	c := &Cmd{donec: donec, linec: linec}
+	c := &Cmd{donec: donec, linec: linec, closer: stdout}
 	lr := bufio.NewReader(stdout)
 	go func() {
 		defer func() {
@@ -65,6 +66,7 @@ func NewCmd(ctx context.Context, cmdname, args string) (*Cmd, error) {
 func (c *Cmd) Lines() <-chan string { return c.linec }
 
 func (c *Cmd) Close() error {
+	c.closer.Close()
 	<-c.donec
 	return c.err
 }
