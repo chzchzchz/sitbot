@@ -1,3 +1,7 @@
 #!/bin/bash
+set -eox pipefail
 outpage=`curl -L --max-time 2 "$1"`
-echo "$outpage" | grep -a -oP '<title>\K([^<]+)' | sed 's/&quot;/"/g;s/&mdash;/--/g;s/&nbsp;/ /g'
+s=`echo "$outpage" | grep -a -oP '<title>\K([^<]+)'`
+if [ -n "$s" ]; then
+	python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s"
+fi
