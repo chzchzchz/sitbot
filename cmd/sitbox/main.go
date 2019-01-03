@@ -22,7 +22,6 @@ func main() {
 	cmd, err := bot.NewCmd(ctx, cmdname, []string{os.Args[2]}, nil)
 	if err != nil {
 		cancel()
-		os.Stdout.WriteString(err.Error())
 		os.Exit(1)
 	}
 	defer func() {
