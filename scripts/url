@@ -7,11 +7,15 @@ if [[ "$ty" =~ "text" ]]; then
 	fi
 	s=`echo "$outpage" | grep -a -oP '<title>\K([^<]+)' 2>/dev/null`
 	if [ -n "$s" ]; then
-		pydec=`python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s" 2>/dev/null`
-		if [ $? == 0 ]; then
-			echo $pydec
-			exit 0
+		if [[ "$s" =~ "&" ]]; then
+			pydec=`python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s" 2>/dev/null`
+			if [ $? == 0 ]; then
+				echo $pydec
+			fi
+		else
+			echo "$s"
 		fi
+		exit 0
 	fi
 	echo "$outpage" | grep -a -v "^\\w*$" | head -n1 | head -n1 -c100
 elif [ -n "$ty" ]; then
