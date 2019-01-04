@@ -1,16 +1,19 @@
 #!/bin/bash
-set -eou pipefail
-
-ty=`curl -L --max-time 2 --head "$1" 2>/dev/null | grep -i Content-type | cut -f2 -d: |  sed 's/\r//g;s/nosniff//g;s/ //g'`
+ty=`curl -k -L --max-time 2 --head "$1" 2>/dev/null | grep -i Content-type | cut -f2 -d: |  sed 's/\r//g;s/nosniff//g;s/ //g'`
 if [[ "$ty" =~ "text" ]]; then
-	outpage=`curl -L --max-time 2 "$1" 2>/dev/null`
+	outpage=`curl -k -L --max-time 2 "$1" 2>/dev/null | sed 's/\r/\n/g'`
 	if [ -z "$outpage" ]; then
 		exit 0
 	fi
 	s=`echo "$outpage" | grep -a -oP '<title>\K([^<]+)' 2>/dev/null`
 	if [ -n "$s" ]; then
-		python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s"
+		pydec=`python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s" 2>/dev/null`
+		if [ $? == 0 ]; then
+			echo $pydec
+			exit 0
+		fi
 	fi
-else
+	echo "$outpage" | grep -a -v "^\\w*$" | head -n1 | head -n1 -c100
+elif [ -n "$ty" ]; then
 	echo "$ty"
 fi
