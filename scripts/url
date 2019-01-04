@@ -1,7 +1,16 @@
 #!/bin/bash
-set -eox pipefail
-outpage=`curl -L --max-time 2 "$1"`
-s=`echo "$outpage" | grep -a -oP '<title>\K([^<]+)'`
-if [ -n "$s" ]; then
-	python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s"
+set -eou pipefail
+
+ty=`curl -L --max-time 2 --head "$1" 2>/dev/null | grep -i Content-type | cut -f2 -d: |  sed 's/\r//g;s/nosniff//g;s/ //g'`
+if [[ "$ty" =~ "text" ]]; then
+	outpage=`curl -L --max-time 2 "$1" 2>/dev/null`
+	if [ -z "$outpage" ]; then
+		exit 0
+	fi
+	s=`echo "$outpage" | grep -a -oP '<title>\K([^<]+)' 2>/dev/null`
+	if [ -n "$s" ]; then
+		python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s"
+	fi
+else
+	echo "$ty"
 fi
