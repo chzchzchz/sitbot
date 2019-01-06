@@ -1,2 +1,2 @@
 #!/bin/bash
-echo -n -e "$1"
+echo -e "$1"

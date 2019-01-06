@@ -5,7 +5,7 @@ if [[ "$ty" =~ "text" ]]; then
 	if [ -z "$outpage" ]; then
 		exit 0
 	fi
-	s=`echo "$outpage" | grep -a -oP '<title>\K([^<]+)' 2>/dev/null`
+	s=`echo "$outpage" | grep -a -oP '<title>\K([^<]+)' 2>/dev/null | head -n1`
 	if [ -n "$s" ]; then
 		if [[ "$s" =~ "&" ]]; then
 			pydec=`python3 -c "import html, sys; print(html.unescape(sys.argv[1]))" "$s" 2>/dev/null`
