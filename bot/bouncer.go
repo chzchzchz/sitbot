@@ -36,6 +36,7 @@ func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
 		for {
 			select {
 			case <-ctx.Done():
+				return
 			default:
 			}
 			conn, err := ln.Accept()
