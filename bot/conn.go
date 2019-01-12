@@ -111,11 +111,7 @@ type readChan struct {
 	donec <-chan struct{}
 }
 
-func NewTeeMsgConnDial(ctx context.Context, serv string) (*TeeMsgConn, error) {
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", serv)
-	if err != nil {
-		return nil, err
-	}
+func NewTeeMsgConn(ctx context.Context, conn net.Conn) (*TeeMsgConn, error) {
 	mc, err := NewMsgConn(ctx, conn, time.Second)
 	if err != nil {
 		return nil, err

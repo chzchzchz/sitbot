@@ -1,0 +1,10 @@
+{"Id":"mainbotSOCKS",
+ "ServerURL" : "irc://127.0.0.1:6667",
+ "ProxyURL" : "socks5://127.0.0.1:9050",
+ "Nick":"sitbotSOCKS",
+ "Chans":["#sitbot"],
+ "Patterns":
+ [
+	{"Match" : "(?i)^\\s*(hello)[,!]?\\s+sitbotSOCKS", "Template" : "greet %s"}
+ ]
+}

@@ -110,8 +110,8 @@ func (b *Bot) Update(p Profile) error {
 	return nil
 }
 
-func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
-	b = &Bot{Profile: p,
+func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
+	b := &Bot{Profile: p,
 		Start:    Time(time.Now()),
 		Channels: make(map[string]struct{}),
 		Tasks:    make(map[TaskId]*Task),
@@ -127,7 +127,11 @@ func NewBot(ctx context.Context, p Profile) (b *Bot, err error) {
 			b.Close()
 		}
 	}()
-	if b.mc, err = NewTeeMsgConnDial(b.ctx, p.Server.Host); err != nil {
+	conn, cerr := p.Dial(b.ctx)
+	if cerr != nil {
+		return nil, cerr
+	}
+	if b.mc, err = NewTeeMsgConn(b.ctx, conn); err != nil {
 		return nil, err
 	}
 	b.wg.Add(1)
