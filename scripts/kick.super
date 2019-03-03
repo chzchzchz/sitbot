@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eox pipefail
+ch=`echo $1 | cut -f1 -d' '`
+usr=`echo $1 | cut -f2 -d' '`
+curl ${SITBOT_URL}/bot/${SITBOT_ID} -XPOST -d'{"Command" : "KICK", "Params" : ["'"${ch}"'","'"${usr}"'"], "TaskId" : '"${SITBOT_TID}"'}' >/dev/null 2>&1

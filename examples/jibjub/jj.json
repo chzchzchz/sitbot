@@ -1,0 +1,19 @@
+{"Id":"BOTNAME",
+ "ServerURL" : "irc://TARGETNET",
+ "Nick":"BOTNAME",
+ "Chans":["#jibjub"],
+ "Patterns":
+ [
+	{"Match" : "j[aeiou][mnbpd]j[aeiou][mnbpd]", "Template" : "echo BOTPHRASE"},
+	{"Match" : "GO GO GO", "Template" : "join.super TARGETCHAN"}
+ ],
+ "PatternsRaw":
+ [
+	{"Match" : "^(?P<user>[^\\s@!]+)[^\\s]*\\s+KICK\\s+TARGETCHAN\\s+BOTNAME", "Template" : "join.super TARGETCHAN"},
+	{"Match" : "^(?P<user>[^\\s@!]+)[^\\s]*\\s+KICK\\s+(?P<chan>#[^\\s]+)\\s+j[aeiou][mnbpd]", "Template" : "kick.super $chan $user"},
+	{"Match" : "^(?P<user>[^\\s@!]+)[^\\s]*\\s+JOIN\\s+(:)?TARGETCHAN", "Template" : "kick.super TARGETCHAN TARGETUSER"},
+	{"Match" : "(?i)TARGETUSER[ ]+[^#N]", "Template" : "kick.super TARGETCHAN TARGETUSER"},
+	{"Match" : "NOTICE", "Template" : "kick.super TARGETCHAN TARGETUSER"},
+	{"Match" : "MODE", "Template" : "kick.super TARGETCHAN TARGETUSER"}
+ ]
+}
