@@ -111,12 +111,13 @@ func (b *Bot) Update(p Profile) error {
 }
 
 func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
+	invl := time.Duration(p.RateMs) * time.Millisecond
 	b := &Bot{Profile: p,
 		Start:    Time(time.Now()),
 		Channels: make(map[string]struct{}),
 		Tasks:    make(map[TaskId]*Task),
 		welcomec: make(chan struct{}),
-		limiter:  rate.NewLimiter(rate.Every(time.Second), 1),
+		limiter:  rate.NewLimiter(rate.Every(invl), 1),
 	}
 	if err = b.Update(b.Profile); err != nil {
 		return nil, err
@@ -131,7 +132,7 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 	if cerr != nil {
 		return nil, cerr
 	}
-	if b.mc, err = NewTeeMsgConn(b.ctx, conn); err != nil {
+	if b.mc, err = NewTeeMsgConn(b.ctx, conn, p.RateMs); err != nil {
 		return nil, err
 	}
 	b.wg.Add(1)

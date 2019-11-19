@@ -111,8 +111,8 @@ type readChan struct {
 	donec <-chan struct{}
 }
 
-func NewTeeMsgConn(ctx context.Context, conn net.Conn) (*TeeMsgConn, error) {
-	mc, err := NewMsgConn(ctx, conn, time.Second)
+func NewTeeMsgConn(ctx context.Context, conn net.Conn, ms int) (*TeeMsgConn, error) {
+	mc, err := NewMsgConn(ctx, conn, time.Duration(ms)*time.Millisecond)
 	if err != nil {
 		return nil, err
 	}

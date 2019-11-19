@@ -9,11 +9,14 @@ import (
 	"golang.org/x/net/proxy"
 )
 
+const defaultRateMs = 1000
+
 type Profile struct {
 	ServerURL string
 	ProxyURL  string
 	Nick      string
 	Chans     []string
+	RateMs    int
 	// Id is the way to reference this bot.
 	Id          string
 	Patterns    []Pattern
@@ -24,6 +27,9 @@ func UnmarshalProfile(b []byte) (*Profile, error) {
 	var p Profile
 	if err := json.Unmarshal(b, &p); err != nil {
 		return nil, err
+	}
+	if p.RateMs == 0 {
+		p.RateMs = defaultRateMs
 	}
 	return &p, nil
 }
