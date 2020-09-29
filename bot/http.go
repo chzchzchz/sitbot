@@ -19,12 +19,11 @@ type httpHandler struct {
 	mu   sync.RWMutex
 }
 
-func ServeHttp(g *Gang, serv string) error {
-	h := &httpHandler{
+func GangHandler(g *Gang) http.Handler {
+	return &httpHandler{
 		g:    g,
 		tmpl: template.Must(template.New("bot").Parse("")),
 	}
-	return http.ListenAndServe(serv, h)
 }
 
 func (h *httpHandler) handleGet(w http.ResponseWriter, r *http.Request) {
