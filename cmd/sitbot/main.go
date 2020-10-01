@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -16,10 +17,16 @@ type authHttpHandler struct {
 }
 
 func (h *authHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil && net.ParseIP(ip).IsLoopback() {
+		// Pass-through for any local accesses so script callbacks work.
+		h.h.ServeHTTP(w, r)
+		return
+	}
 	if u, p, ok := r.BasicAuth(); !ok || u != h.user || p != h.pass {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		log.Printf("http: bad auth %q %q %v", u, p, ok)
+		log.Printf("http: [%s] bad auth %q %q", r.RemoteAddr, u, p)
 		return
 	}
 	h.h.ServeHTTP(w, r)
