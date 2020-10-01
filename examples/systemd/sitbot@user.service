@@ -1,0 +1,17 @@
+# Unit file for sitbot.
+
+[Unit]
+Description=sitbot irc bot
+AssertPathExists=/home/%i/sitbot/scripts/sandbox
+AssertPathExists=/home/%i/go/bin/sitbot
+AssertPathExists=/home/%i/go/bin/sitbox
+
+[Service]
+# TODO: notify when ports are ready
+Type=simple
+ExecStart=/home/%i/go/bin/sitbot
+Restart=always
+WorkingDirectory=/home/%i/sitbot
+User=%i
+Group=%i
+Environment="PATH=/usr/bin:/bin:/usr/local/bin:/home/%i/go/bin"
