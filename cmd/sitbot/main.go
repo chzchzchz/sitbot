@@ -39,7 +39,11 @@ func main() {
 	flag.Parse()
 
 	laddr := *laddrFlag
-	os.Setenv("SITBOT_URL", "http://"+laddr)
+	if os.Getenv("SITBOT_URL") == "" {
+		// May set an alternative SITBOT_URL if listen address is not the
+		// the same as access address (e.g., 0.0.0.0 vs 127.0.0.1).
+		os.Setenv("SITBOT_URL", "http://"+laddr)
+	}
 
 	h := bot.GangHandler(bot.NewGang())
 	if len(*userFlag) > 0 {
