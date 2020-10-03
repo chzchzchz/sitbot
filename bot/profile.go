@@ -15,6 +15,8 @@ type Profile struct {
 	ServerURL string
 	ProxyURL  string
 	Nick      string
+	User      string
+	Pass      string
 	Chans     []string
 	RateMs    int
 	// Id is the way to reference this bot.

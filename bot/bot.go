@@ -146,10 +146,20 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 			}
 		}
 	}()
-	for _, msg := range []irc.Message{
-		{Command: irc.USER, Params: []string{p.Nick, p.Nick, "localhost", p.Nick}},
+
+	n := 0
+	if p.Pass == "" {
+		n++
+	}
+	if p.User == "" {
+		p.User = p.Nick
+	}
+	msgs := []irc.Message{
+		{Command: irc.PASS, Params: []string{p.Pass}},
 		{Command: irc.NICK, Params: []string{p.Nick}},
-	} {
+		{Command: irc.USER, Params: []string{p.User, p.Nick, "localhost", p.Nick}},
+	}
+	for _, msg := range msgs[n:] {
 		if err := b.mc.WriteMsg(msg); err != nil {
 			return nil, err
 		}
