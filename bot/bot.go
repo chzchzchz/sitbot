@@ -200,6 +200,7 @@ func (b *Bot) Write(tid TaskId, msg irc.Message) error {
 	return t.Write(msg)
 }
 
+// runTask puts a command in the task list and schedules it to run.
 func (b *Bot) runTask(name, cmdtxt string, pm **PatternMatcher, f func(*Task) error) {
 	cctx, cancel := context.WithCancel(b.ctx)
 	task := &Task{
@@ -215,15 +216,21 @@ func (b *Bot) runTask(name, cmdtxt string, pm **PatternMatcher, f func(*Task) er
 	go func() {
 		defer func() {
 			b.mu.Lock()
-			delete(b.Tasks, tid)
+			delete(b.Tasks, task.tid)
 			b.mu.Unlock()
 			b.wg.Done()
 		}()
 		if pm != nil {
+			cmdtxt := task.Command
 			task.Command = b.tryPatternMatch(task.Command, pm)
+			if task.Command != "" {
+				log.Printf("[task] %q matched to %q", cmdtxt, task.Command)
+			}
 		}
-		if task.Command != "" && b.limiter.Wait(cctx) == nil {
-			f(task)
+		if task.Command != "" && b.limiter.Wait(task.ctx) == nil {
+			if err := f(task); err != nil {
+				log.Printf("[task] failed on command %q (%v)", task.Command, err)
+			}
 		}
 	}()
 }
