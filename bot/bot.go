@@ -83,8 +83,8 @@ type Bot struct {
 	Tasks map[TaskId]*Task
 	tid   TaskId
 
-	welcomec chan struct{}
-	netpfx   *irc.Prefix
+	Welcomec chan struct{}
+	Netpfx   *irc.Prefix
 
 	pm    *PatternMatcher
 	pmraw *PatternMatcher
@@ -116,7 +116,7 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 		Start:    Time(time.Now()),
 		Channels: make(map[string]struct{}),
 		Tasks:    make(map[TaskId]*Task),
-		welcomec: make(chan struct{}),
+		Welcomec: make(chan struct{}),
 		limiter:  rate.NewLimiter(rate.Every(invl), 1),
 	}
 	if err = b.Update(b.Profile); err != nil {
@@ -165,7 +165,7 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 		}
 	}
 	select {
-	case <-b.welcomec:
+	case <-b.Welcomec:
 	case <-b.mc.ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -256,8 +256,8 @@ func (b *Bot) processMsg(msg irc.Message) error {
 	log.Printf("processMsg: %+v\n", msg)
 	switch msg.Command {
 	case irc.RPL_WELCOME:
-		b.netpfx = msg.Prefix
-		close(b.welcomec)
+		b.Netpfx = msg.Prefix
+		close(b.Welcomec)
 	case irc.PONG:
 		return nil
 	case irc.PING:
@@ -289,3 +289,9 @@ func (b *Bot) processMsg(msg irc.Message) error {
 
 func (b *Bot) TxMsgs() uint64 { return b.mc.TxMsgs() }
 func (b *Bot) RxMsgs() uint64 { return b.mc.RxMsgs() }
+
+func (b *Bot) RLock()   { b.mu.RLock() }
+func (b *Bot) RUnlock() { b.mu.RUnlock() }
+
+func (b *Bot) TeeMsg() *TeeMsgConn { return b.mc }
+func (b *Bot) CleanNick() string   { return strings.Split(b.Nick, "/")[0] }

@@ -54,14 +54,6 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) (err er
 	}
 	d, f := path.Split(r.URL.Path)
 	switch d {
-	case "/bouncer/":
-		bot := h.g.Lookup(f)
-		if bot == nil {
-			return io.EOF
-		}
-		if _, err = NewBouncer(bot, string(b)); err != nil {
-			return err
-		}
 	case "/bot/":
 		m := &BotPostMessage{}
 		if err = json.Unmarshal(b, m); err != nil {
@@ -102,14 +94,12 @@ func (h *httpHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	switch d {
 	case "/bot/":
 		if err := h.g.Delete(f); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-	case "/bouncer/":
-		// TODO
-		w.WriteHeader(http.StatusBadRequest)
 	default:
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
 	}
 	io.WriteString(w, "OK")
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/chzchzchz/sitbot/bot"
+	"github.com/chzchzchz/sitbot/bouncer"
 )
 
 type authHttpHandler struct {
@@ -45,7 +46,13 @@ func main() {
 		os.Setenv("SITBOT_URL", "http://"+laddr)
 	}
 
-	h := bot.GangHandler(bot.NewGang())
+	mux := http.NewServeMux()
+
+	g := bot.NewGang()
+	mux.Handle("/", bot.GangHandler(g))
+	mux.Handle("/bouncer/", http.StripPrefix("/bouncer", bouncer.NewHandler(g)))
+	var h http.Handler
+	h = mux
 	if len(*userFlag) > 0 {
 		log.Println("using basic authentication on user " + *userFlag)
 		h = &authHttpHandler{h: h, user: *userFlag, pass: *passFlag}

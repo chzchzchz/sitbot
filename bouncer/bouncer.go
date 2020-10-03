@@ -1,4 +1,4 @@
-package bot
+package bouncer
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chzchzchz/sitbot/bot"
 	"gopkg.in/sorcix/irc.v2"
 )
 
@@ -16,22 +17,22 @@ type Bouncer struct {
 	wg     sync.WaitGroup
 	ctx    context.Context
 	cancel context.CancelFunc
-	bot    *Bot
+	b      *bot.Bot
 }
 
-func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
+func NewBouncer(b *bot.Bot, serv string) (*Bouncer, error) {
 	ln, err := net.Listen("tcp", serv)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithCancel(bot.Ctx())
-	b := &Bouncer{ln: ln, ctx: ctx, cancel: cancel, bot: bot}
-	b.wg.Add(1)
+	ctx, cancel := context.WithCancel(b.Ctx())
+	bounce := &Bouncer{ln: ln, ctx: ctx, cancel: cancel, b: b}
+	bounce.wg.Add(1)
 	go func() {
 		defer func() {
 			ln.Close()
 			cancel()
-			b.wg.Done()
+			bounce.wg.Done()
 		}()
 		for {
 			select {
@@ -44,23 +45,23 @@ func NewBouncer(bot *Bot, serv string) (*Bouncer, error) {
 				log.Println(err)
 				return
 			}
-			mc, err := NewMsgConn(ctx, conn, time.Millisecond)
+			mc, err := bot.NewMsgConn(ctx, conn, time.Millisecond)
 			if err != nil {
 				log.Println(err)
 				return
 			}
-			b.wg.Add(1)
+			bounce.wg.Add(1)
 			go func() {
-				defer b.wg.Done()
-				err := b.handleConn(mc)
+				defer bounce.wg.Done()
+				err := bounce.handleConn(mc)
 				log.Printf("bouncer closing %v (%v)", conn.RemoteAddr(), err)
 			}()
 		}
 	}()
-	return b, nil
+	return bounce, nil
 }
 
-func (b *Bouncer) handleConn(mc *MsgConn) error {
+func (bounce *Bouncer) handleConn(mc *bot.MsgConn) error {
 	var wg sync.WaitGroup
 	defer func() {
 		mc.Close()
@@ -77,41 +78,39 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 		}
 	}
 	select {
-	case <-b.bot.welcomec:
+	case <-bounce.b.Welcomec:
 	case <-time.After(time.Second):
 		return io.EOF
 	}
 	date := time.Now().Format("Mon Jan 2 15:04:05 -0700 MST 2006")
-	nnick, nnpfx := b.bot.Nick+"!bot@masked", b.bot.netpfx
-	nn := b.bot.netpfx.String()
+	cn := bounce.b.CleanNick()
+	nnick, nnpfx := cn+"!bot@masked", bounce.b.Netpfx
+	nn := bounce.b.Netpfx.String()
 	for _, msg := range []irc.Message{
 		{
 			Prefix:  nnpfx,
 			Command: irc.RPL_WELCOME,
-			Params: []string{
-				b.bot.Nick,
-				"Welcome to the bouncer " + nnick,
-			},
+			Params:  []string{cn, "Welcome to the bouncer " + nnick},
 		},
 		{
 			Prefix:  nnpfx,
 			Command: irc.RPL_YOURHOST,
-			Params: []string{b.bot.Nick,
-				"Your host is " + nn + ", running version sitbot-1.0"},
+			Params: []string{
+				cn, "Your host is " + nn + ", running version sitbot-1.0"},
 		},
 		{
 			Prefix:  nnpfx,
 			Command: irc.RPL_CREATED,
-			Params:  []string{b.bot.Nick, "This server was created " + date},
+			Params:  []string{cn, "This server was created " + date},
 		},
 		{
 			Prefix:  nnpfx,
 			Command: irc.RPL_MYINFO,
-			Params:  []string{b.bot.Nick, nn + " v1.0 iosw biklmnopstv bklov"},
+			Params:  []string{cn, nn + " v1.0 iosw biklmnopstv bklov"},
 		},
 		{
 			Command: irc.PING,
-			Params:  []string{b.bot.Nick, "hello"},
+			Params:  []string{cn, "hello"},
 		},
 	} {
 		if err := mc.WriteMsg(msg); err != nil {
@@ -119,8 +118,9 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 		}
 	}
 	nnpfx2 := &irc.Prefix{Name: nnick}
-	b.bot.mu.RLock()
-	for c := range b.bot.Channels {
+	bounce.b.RLock()
+	// TODO: get channel data from state watcher, not bot
+	for c := range bounce.b.Channels {
 		// Have chat server return names list for channel as if joined.
 		wg.Add(1)
 		go func(chn string) {
@@ -128,15 +128,15 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 			msg := irc.Message{Prefix: nnpfx2, Command: irc.JOIN, Params: []string{chn}}
 			mc.WriteMsg(msg)
 			msg = irc.Message{Command: irc.NAMES, Params: []string{chn}}
-			b.bot.mc.WriteMsg(msg)
+			bounce.b.TeeMsg().WriteMsg(msg)
 		}(c)
 	}
-	b.bot.mu.RUnlock()
+	bounce.b.RUnlock()
 
-	brc, bdc := b.bot.mc.NewReadChan()
+	brc, bdc := bounce.b.TeeMsg().NewReadChan()
 	defer close(bdc)
 	for {
-		var tgtmc *MsgConn
+		var tgtmc *bot.MsgConn
 		var msg irc.Message
 		var ok bool
 		select {
@@ -149,7 +149,7 @@ func (b *Bouncer) handleConn(mc *MsgConn) error {
 				msg.Command, tgtmc = irc.PONG, mc
 				break
 			}
-			tgtmc = b.bot.mc.MsgConn
+			tgtmc = bounce.b.TeeMsg().MsgConn
 			switch msg.Command {
 			case irc.WHO, irc.NAMES, irc.MODE, irc.PRIVMSG, irc.KICK:
 			default:
