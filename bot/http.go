@@ -33,8 +33,7 @@ func (h *httpHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	h.g.LockBots()
 	defer h.g.UnlockBots()
 	if err := tmpl.Execute(w, h.g); err != nil {
-		io.WriteString(w, err.Error())
-		return
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -43,47 +42,43 @@ type BotPostMessage struct {
 	irc.Message
 }
 
-func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
-	var err error
+func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) (err error) {
 	defer func() {
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	}()
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return
+		return err
 	}
 	d, f := path.Split(r.URL.Path)
 	switch d {
 	case "/bouncer/":
 		bot := h.g.Lookup(f)
 		if bot == nil {
-			err = io.EOF
-			return
+			return io.EOF
 		}
 		if _, err = NewBouncer(bot, string(b)); err != nil {
-			return
+			return err
 		}
 	case "/bot/":
 		m := &BotPostMessage{}
 		if err = json.Unmarshal(b, m); err != nil {
-			return
+			return err
 		}
 		bot := h.g.Lookup(f)
 		if len(m.Command) == 0 || bot == nil {
-			err = io.EOF
-			return
+			return io.EOF
 		}
 		if err = bot.Write(m.TaskId, m.Message); err != nil {
-			return
+			return err
 		}
 	case "/":
 		if f == "tmpl" {
 			tmpl, err := template.New("bot").Parse(string(b))
 			if err != nil {
-				return
+				return err
 			}
 			h.mu.Lock()
 			h.tmpl = tmpl
@@ -91,14 +86,15 @@ func (h *httpHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		} else {
 			p, err := UnmarshalProfile(b)
 			if err != nil {
-				return
+				return err
 			}
 			if err = h.g.Post(*p); err != nil {
-				return
+				return err
 			}
 		}
 	}
 	io.WriteString(w, "OK")
+	return nil
 }
 
 func (h *httpHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
