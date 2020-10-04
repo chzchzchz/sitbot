@@ -83,7 +83,7 @@ func (bounce *Bouncer) handleConn(mc *bot.MsgConn) error {
 		return io.EOF
 	}
 	date := time.Now().Format("Mon Jan 2 15:04:05 -0700 MST 2006")
-	cn := bounce.b.CleanNick()
+	cn := bounce.b.Nick
 	nnick, nnpfx := cn+"!bot@masked", bounce.b.Netpfx
 	nn := bounce.b.Netpfx.String()
 	for _, msg := range []irc.Message{

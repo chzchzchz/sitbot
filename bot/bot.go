@@ -294,4 +294,3 @@ func (b *Bot) RLock()   { b.mu.RLock() }
 func (b *Bot) RUnlock() { b.mu.RUnlock() }
 
 func (b *Bot) TeeMsg() *TeeMsgConn { return b.mc }
-func (b *Bot) CleanNick() string   { return strings.Split(b.Nick, "/")[0] }
