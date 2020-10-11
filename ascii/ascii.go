@@ -2,6 +2,7 @@ package ascii
 
 import (
 	"errors"
+	"unicode/utf8"
 )
 
 var ErrBadMircCode = errors.New("bad mirc code")
@@ -9,7 +10,7 @@ var ErrBadCellCoord = errors.New("out of range")
 
 type Cell struct {
 	ColorPair
-	Value byte
+	Value rune
 }
 
 type ASCII struct {
@@ -17,7 +18,7 @@ type ASCII struct {
 	Cells [][]Cell
 }
 
-func NewASCII(dat []byte) (*ASCII, error) {
+func NewASCII(dat string) (*ASCII, error) {
 	var cells [][]Cell
 	var row []Cell
 	chompState, fg, bg := 0, -1, -1
@@ -114,8 +115,9 @@ func (a *ASCII) Colors() (ret []ColorExtent) {
 					Length:    0,
 					ColorPair: col.ColorPair}
 			}
-			off++
-			ce.Length++
+			l := utf8.RuneLen(col.Value)
+			off += l
+			ce.Length += l
 		}
 		if ce.Length != 0 {
 			ret = append(ret, ce)

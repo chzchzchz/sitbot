@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/andlabs/ui"
@@ -21,17 +21,17 @@ func uiFunc() {
 	window.SetMargined(true)
 	board := NewBoard()
 
-	loadAscii := func(f string) error {
-		dat, err := ioutil.ReadFile(f)
+	loadAscii := func(fname string) error {
+		bytes, err := ioutil.ReadFile(fname)
 		if err != nil {
 			return err
 		}
-		aa, err := ascii.NewASCII(dat)
+		aa, err := ascii.NewASCII(string(bytes))
 		if err != nil {
 			return err
 		}
 		board.SetASCII(aa)
-		fmt.Println("loaded ascii", f)
+		log.Println("loaded ascii", fname)
 		return nil
 	}
 
@@ -47,14 +47,14 @@ func uiFunc() {
 	saveButton.OnClicked(func(*ui.Button) {
 		s := ui.SaveFile(window)
 		if err := ioutil.WriteFile(s, board.ASCII().Bytes(), 0644); err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
-		fmt.Println("saved to", s)
+		log.Println("saved to", s)
 	})
 	newButton := ui.NewButton("New")
 	newButton.OnClicked(func(*ui.Button) {
-		a, _ := ascii.NewASCII(nil)
+		a, _ := ascii.NewASCII("")
 		board.SetASCII(a)
 	})
 

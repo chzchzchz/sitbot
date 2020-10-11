@@ -1,6 +1,8 @@
 package main
 
 import (
+	"unicode/utf8"
+
 	"github.com/andlabs/ui"
 	"github.com/chzchzchz/sitbot/ascii"
 )
@@ -13,6 +15,7 @@ type Board struct {
 	Brush      string
 	a          *ascii.ASCII
 	ctrlDown   bool
+	altDown    bool
 }
 
 var uiFont = &ui.FontDescriptor{Family: "Monospace", Size: 6, Weight: 400}
@@ -30,7 +33,7 @@ func (b *Board) RedrawASCII() {
 }
 
 func NewBoard() *Board {
-	aa, _ := ascii.NewASCII(nil)
+	aa, _ := ascii.NewASCII("")
 	b := &Board{a: aa, TextWidth: 1.0, TextHeight: 1.0}
 	b.as = AttributedStringFromASCII(b.a)
 	b.Area = ui.NewArea(&areaHandler{b})
@@ -38,6 +41,46 @@ func NewBoard() *Board {
 		return nil
 	}
 	return b
+}
+
+type Coord struct {
+	x int
+	y int
+}
+
+func (b *Board) Paint(x, y int, color ascii.ColorPair) {
+	origin := b.a.Get(x, y)
+	if origin == nil {
+		return
+	}
+
+	visited, toVisit := make(map[Coord]struct{}), []Coord{{x, y}}
+	for len(toVisit) > 0 {
+		nextVisit := make(map[Coord]struct{})
+		for _, coord := range toVisit {
+			visited[coord] = struct{}{}
+			if c := b.a.Get(coord.x, coord.y); c != nil && c.Value == origin.Value {
+				if color.Foreground != nil {
+					c.Foreground = color.Foreground
+				}
+				if color.Background != nil {
+					c.Background = color.Background
+				}
+			} else {
+				continue
+			}
+			for _, dir := range []Coord{{-1, 0}, {1, 0}, {0, -1}, {0, 1}} {
+				newCoord := Coord{coord.x + dir.x, coord.y + dir.y}
+				nextVisit[newCoord] = struct{}{}
+			}
+		}
+		toVisit = nil
+		for coord := range nextVisit {
+			if _, ok := visited[coord]; !ok {
+				toVisit = append(toVisit, coord)
+			}
+		}
+	}
 }
 
 type areaHandler struct{ b *Board }
@@ -94,12 +137,14 @@ func (ah *areaHandler) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 	// Modify cell.
 	if c := ah.b.a.Get(int(x), int(y)); c != nil {
 		if ah.b.ctrlDown {
+			// Grab color
 			SetSelectColor(c.ColorPair)
 			return
-		}
-		if me.Down == 1 {
+		} else if ah.b.altDown {
+			ah.b.Paint(int(x), int(y), GetSelectColor())
+		} else if me.Down == 1 {
 			if len(ah.b.Brush) > 0 {
-				c.Value = byte(ah.b.Brush[0])
+				c.Value, _ = utf8.DecodeRuneInString(ah.b.Brush)
 			}
 			cp := GetSelectColor()
 			if cp.Foreground != nil {
@@ -117,12 +162,14 @@ func (ah *areaHandler) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 	}
 	// Create new cells.
 	if me.Down == 1 {
-		br := byte(' ')
+		br := " "
 		if len(ah.b.Brush) > 0 {
-			br = byte(ah.b.Brush[0])
+			br = ah.b.Brush
 		}
 		c := GetSelectColor()
-		ah.b.a.Put(ascii.Cell{ColorPair: c, Value: br}, int(x), int(y))
+		for i, v := range br {
+			ah.b.a.Put(ascii.Cell{ColorPair: c, Value: v}, int(x), int(y)+i)
+		}
 		ah.b.RedrawASCII()
 		return
 	}
@@ -131,9 +178,14 @@ func (ah *areaHandler) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 func (ah *areaHandler) MouseCrossed(a *ui.Area, left bool) {}
 func (ah *areaHandler) DragBroken(a *ui.Area)              {}
 func (ah *areaHandler) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) bool {
-	if ke.Key == 0 && ke.Modifier == 1 && ke.Modifiers == 0 {
-		ah.b.ctrlDown = ke.Up == false
-		return true
+	if ke.Key == 0 && ke.Modifiers == 0 {
+		if ke.Modifier == 1 {
+			ah.b.ctrlDown = ke.Up == false
+			return true
+		} else if ke.Modifier == 2 {
+			ah.b.altDown = ke.Up == false
+			return true
+		}
 	}
 	return false
 }
