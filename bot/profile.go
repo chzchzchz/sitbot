@@ -12,17 +12,21 @@ import (
 const defaultRateMs = 1000
 
 type Profile struct {
-	ServerURL string
-	ProxyURL  string
-	Nick      string
-	User      string
-	Pass      string
-	Chans     []string
-	RateMs    int
+	ProfileLogin
+	Chans  []string
+	RateMs int
 	// Id is the way to reference this bot.
 	Id          string
 	Patterns    []Pattern
 	PatternsRaw []Pattern
+}
+
+type ProfileLogin struct {
+	ServerURL string
+	ProxyURL  string `json:",omitempty"`
+	Nick      string
+	User      string
+	Pass      string `json:",omitempty"`
 }
 
 func UnmarshalProfile(b []byte) (*Profile, error) {

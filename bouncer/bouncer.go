@@ -78,14 +78,14 @@ func (bounce *Bouncer) handleConn(mc *bot.MsgConn) error {
 		}
 	}
 	select {
-	case <-bounce.b.Welcomec:
+	case <-bounce.b.Login.Welcome():
 	case <-time.After(time.Second):
 		return io.EOF
 	}
 	date := time.Now().Format("Mon Jan 2 15:04:05 -0700 MST 2006")
 	cn := bounce.b.Nick
-	nnick, nnpfx := cn+"!bot@masked", bounce.b.Netpfx
-	nn := bounce.b.Netpfx.String()
+	nnick, nnpfx := cn+"!bot@masked", bounce.b.Login.Netpfx
+	nn := bounce.b.Login.Netpfx.String()
 	for _, msg := range []irc.Message{
 		{
 			Prefix:  nnpfx,
@@ -120,7 +120,7 @@ func (bounce *Bouncer) handleConn(mc *bot.MsgConn) error {
 	nnpfx2 := &irc.Prefix{Name: nnick}
 	bounce.b.RLock()
 	// TODO: get channel data from state watcher, not bot
-	for c := range bounce.b.Channels {
+	for c := range bounce.b.State.Channels {
 		// Have chat server return names list for channel as if joined.
 		wg.Add(1)
 		go func(chn string) {

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/chzchzchz/sitbot/bot"
+	bothttp "github.com/chzchzchz/sitbot/bot/http"
 	"github.com/chzchzchz/sitbot/bouncer"
 )
 
@@ -49,7 +50,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	g := bot.NewGang()
-	mux.Handle("/", bot.GangHandler(g))
+	mux.Handle("/", bothttp.NewGangHandler(g))
 	mux.Handle("/bouncer/", http.StripPrefix("/bouncer", bouncer.NewHandler(g)))
 	var h http.Handler
 	h = mux

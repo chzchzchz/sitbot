@@ -9,7 +9,7 @@ Uptime: {{.Start.Elapsed}}<br/>
 Messages Sent: {{.TxMsgs}}<br/>
 Messages Received: {{.RxMsgs}}<br/>
 Channels:
-{{range $ch, $_ := .Channels}}
+{{range $ch, $_ := .State.Channels}}
 {{$ch}} 
 {{end}}
 <br/>
@@ -17,7 +17,7 @@ Channels:
 Tasks:
 <table style="margin-left: 1em;">
 <tr><td>Task</td><td>Lines</td><td>Wall time</td></tr>
-{{range $tid, $task := .Tasks}}
+{{range $tid, $task := .Tasks.Tasks}}
 <tr>
 	<td>{{$task.Name}}</td>
 	<td style="text-align: right;">{{$task.Lines}}</td>

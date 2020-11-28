@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eox pipefail
+
+if [[ "${SITBOT_FROM}" != "${SITBOT_NICK}" ]]; then
+	exit 0
+fi
+
+curl ${SITBOT_URL}/bot/${SITBOT_ID} | \
+jq -r ".State.Channels[\"$SITBOT_CHAN\"].Users | keys[]" | \
+while read -r u; do
+	echo "$u: $1"
+done

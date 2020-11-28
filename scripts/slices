@@ -82,7 +82,7 @@ def mk_slices():
     topping1 = arr_rand(topping)
     topping2 = arr_rand(topping)
     if topping2 == topping1:
-        topping2 = "extra $topping1"
+        topping2 = "extra " + topping1
 
     q = ""
     if random.randint(0,4) == 0:
