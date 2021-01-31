@@ -79,9 +79,9 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 	}
 
 	b.Login = NewLogin(&b.Profile.ProfileLogin, b.Tasks)
-	b.addStage(b.Login)
-	b.addStage(b.dispatcher)
-	b.addStage(b.State)
+	b.AddStage(b.Login)
+	b.AddStage(b.dispatcher)
+	b.AddStage(b.State)
 
 	if err := b.Login.Run(); err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 	return b, nil
 }
 
-func (b *Bot) addStage(s Stage) {
+func (b *Bot) AddStage(s Stage) {
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()

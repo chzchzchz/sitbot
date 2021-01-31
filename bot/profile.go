@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/url"
 
@@ -27,6 +28,23 @@ type ProfileLogin struct {
 	Nick      string
 	User      string
 	Pass      string `json:",omitempty"`
+}
+
+func DecodeProfiles(r io.Reader) (ret []*Profile, err error) {
+	d := json.NewDecoder(r)
+	for {
+		p := &Profile{}
+		if err = d.Decode(p); err != nil {
+			if err == io.EOF {
+				return ret, nil
+			}
+			return nil, err
+		}
+		if p.RateMs == 0 {
+			p.RateMs = defaultRateMs
+		}
+		ret = append(ret, p)
+	}
 }
 
 func UnmarshalProfile(b []byte) (*Profile, error) {

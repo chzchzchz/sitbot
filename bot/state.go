@@ -49,7 +49,7 @@ func (s *State) Process(msg irc.Message) error {
 			s.addModeUser(r, u)
 		}
 	case irc.NICK:
-		sender, newnick := msg.Params[0], msg.Params[1]
+		sender, newnick := msg.Prefix.Name, msg.Params[0]
 		u, ok := s.Users[sender]
 		if !ok {
 			break
