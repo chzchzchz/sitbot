@@ -11,8 +11,7 @@ import (
 type State struct {
 	Channels map[string]*room
 	Users    map[string]*user
-
-	mu sync.RWMutex
+	sync.RWMutex
 }
 
 func NewState() *State {
@@ -23,12 +22,11 @@ func NewState() *State {
 }
 
 func (s *State) Process(msg irc.Message) error {
-	log.Printf("state: %+v", msg)
 	if len(msg.Params) < 1 {
 		return nil
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	switch msg.Command {
 	case irc.JOIN:
 		sender, room := msg.Prefix.Name, msg.Params[0]
@@ -93,12 +91,16 @@ func (s *State) lookupRoom(rn string) *room {
 	return r
 }
 
+var umodes = []string{"~", "@", "+", "=", "!", "&", "%"}
+
 func (s *State) addModeUser(r *room, u string) {
-	umode, unick := u[:1], u
-	if umode == "~" || umode == "@" || umode == "+" || umode == "=" || umode == "!" {
-		unick = u[1:]
-	} else {
-		umode = ""
+	umode, unick := "", u
+	for _, um := range umodes {
+		if um == u[:1] {
+			umode = um
+			unick = u[1:]
+			break
+		}
 	}
 	if len(unick) <= 1 {
 		return
