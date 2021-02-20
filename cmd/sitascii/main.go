@@ -41,7 +41,9 @@ func uiFunc() {
 
 	loadButton := ui.NewButton("Load")
 	loadButton.OnClicked(func(*ui.Button) {
-		loadAscii(ui.OpenFile(window))
+		if err := loadAscii(ui.OpenFile(window)); err != nil {
+			log.Println("error loading ascii:", err)
+		}
 	})
 	saveButton := ui.NewButton("Save")
 	saveButton.OnClicked(func(*ui.Button) {

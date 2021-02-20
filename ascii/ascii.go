@@ -21,7 +21,7 @@ type ASCII struct {
 func NewASCII(dat string) (*ASCII, error) {
 	var cells [][]Cell
 	var row []Cell
-	chompState, fg, bg := 0, -1, -1
+	chompState, fg, bg, fgs, bgs := 0, -1, -1, 0, 0
 	for _, v := range dat {
 		switch v {
 		case '\r':
@@ -45,13 +45,15 @@ func NewASCII(dat string) (*ASCII, error) {
 				continue
 			}
 		case 1:
-			if v >= '0' && v <= '9' {
+			if v >= '0' && v <= '9' && fg != 0 && fgs < 2 {
 				if fg == -1 {
 					fg = 0
 				}
-				fg = fg*10 + int(v-'0')
+				fg, fgs = fg*10+int(v-'0'), fgs+1
 				continue
-			} else if v == ',' {
+			}
+			fgs = 0
+			if v == ',' {
 				chompState, bg = 2, -1
 				continue
 			} else if fg == -1 {
@@ -59,16 +61,17 @@ func NewASCII(dat string) (*ASCII, error) {
 			}
 			chompState = 0
 		case 2:
-			if v >= '0' && v <= '9' {
+			if v >= '0' && v <= '9' && bgs < 2 {
 				if bg == -1 {
 					bg = 0
 				}
-				bg = bg*10 + int(v-'0')
+				bg, bgs = bg*10+int(v-'0'), bgs+1
 				continue
-			} else if bg == -1 {
+			}
+			bgs, chompState = 0, 0
+			if bg == -1 {
 				return nil, ErrBadMircCode
 			}
-			chompState = 0
 		}
 		fgc, err := lookupColor(fg)
 		if err != nil {
@@ -190,4 +193,14 @@ func (a *ASCII) Bytes() []byte {
 		txt = newtxt
 	}
 	return txt
+}
+
+func (a *ASCII) Paste(aa *ASCII, x, y int) {
+	for i := 0; i < aa.Columns(); i++ {
+		for j := 0; j < aa.Rows(); j++ {
+			if c := aa.Get(i, j); c != nil {
+				a.Put(*c, x+i, y+j)
+			}
+		}
+	}
 }
