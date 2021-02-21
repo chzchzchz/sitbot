@@ -11,6 +11,7 @@ var ErrBadCellCoord = errors.New("out of range")
 type Cell struct {
 	ColorPair
 	Value rune
+	CharAttr
 }
 
 type ASCII struct {
@@ -73,11 +74,11 @@ func NewASCII(dat string) (*ASCII, error) {
 				return nil, ErrBadMircCode
 			}
 		}
-		fgc, err := lookupColor(fg)
+		fgc, err := MircColor(fg)
 		if err != nil {
 			return nil, err
 		}
-		bgc, err := lookupColor(bg)
+		bgc, err := MircColor(bg)
 		if err != nil {
 			return nil, err
 		}
@@ -107,16 +108,22 @@ func (a *ASCII) Colors() (ret []ColorExtent) {
 			off++
 			continue
 		}
-		ce := ColorExtent{Start: off, ColorPair: row[0].ColorPair}
+		ce := ColorExtent{
+			Start:     off,
+			ColorPair: row[0].ColorPair,
+			CharAttr:  DefaultCharAttr,
+		}
 		for _, col := range row {
-			if ce.ColorPair != col.ColorPair {
+			if ce.ColorPair != col.ColorPair || ce.CharAttr != col.CharAttr {
 				if ce.Length != 0 {
 					ret = append(ret, ce)
 				}
 				ce = ColorExtent{
 					Start:     off,
 					Length:    0,
-					ColorPair: col.ColorPair}
+					ColorPair: col.ColorPair,
+					CharAttr:  col.CharAttr,
+				}
 			}
 			l := utf8.RuneLen(col.Value)
 			off += l
@@ -183,8 +190,24 @@ func (a *ASCII) Text() string {
 
 func (a *ASCII) Bytes() []byte {
 	txt, inserts := []byte(a.Text()), 0
+	lastAttr := DefaultCharAttr
 	for _, ce := range a.Colors() {
-		code := ce.Code(&mircPalette)
+		var code []byte
+		if ce.CharAttr != lastAttr && ce.ColorPair != DefaultColorPair {
+			code = append(code, '\x0f')
+		}
+		if ce.Bold && lastAttr.Bold != ce.Bold {
+			code = append(code, '\x02')
+		}
+		if ce.Italic && lastAttr.Italic != ce.Italic {
+			code = append(code, '\x1d')
+		}
+		if ce.Underline && lastAttr.Underline != ce.Underline {
+			code = append(code, '\x1f')
+		}
+		lastAttr = ce.CharAttr
+
+		code = append(code, ce.Code(&mircPalette)...)
 		codelen := len(code)
 		newtxt := append(
 			txt[:ce.Start+inserts],

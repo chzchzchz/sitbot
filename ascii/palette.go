@@ -100,7 +100,7 @@ func index2byte(n int) byte {
 	return byte(n-10) + 'A'
 }
 
-func lookupColor(n int) (color.Color, error) {
+func MircColor(n int) (color.Color, error) {
 	if n < 0 {
 		return nil, nil
 	} else if n >= len(mircCodes) {

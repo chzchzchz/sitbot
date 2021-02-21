@@ -9,7 +9,17 @@ type ColorExtent struct {
 	Start  int
 	Length int
 	ColorPair
+	CharAttr
 }
+
+type CharAttr struct {
+	Italic    bool
+	Bold      bool
+	Underline bool
+}
+
+var DefaultCharAttr = CharAttr{}
+var DefaultColorPair = ColorPair{nil, nil}
 
 type ColorPair struct {
 	Foreground color.Color
@@ -17,7 +27,7 @@ type ColorPair struct {
 }
 
 func (c ColorPair) Code(p *Palette) []byte {
-	if c.Foreground == nil && c.Background == nil {
+	if c == DefaultColorPair {
 		return []byte{'\x0f'}
 	}
 	if c.Foreground == nil {

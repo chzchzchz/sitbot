@@ -1,0 +1,4 @@
+#!/bin/bash
+pushd cmd/sitchess >/dev/null 2>&1
+args=`echo $1`
+./sitchess --from=${SITBOT_FROM} move $args 2>&1
