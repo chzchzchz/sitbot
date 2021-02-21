@@ -54,10 +54,16 @@ func init() {
 		Short: "move piece",
 		Run:   func(cmd *cobra.Command, args []string) { move(fromUser, args[0], args[1]) },
 	}
+	hintCmd := &cobra.Command{
+		Use:   "hint",
+		Short: "hint",
+		Run:   func(cmd *cobra.Command, args []string) { hint(fromUser) },
+	}
 	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(resignCmd)
 	rootCmd.AddCommand(showCmd)
 	rootCmd.AddCommand(moveCmd)
+	rootCmd.AddCommand(hintCmd)
 }
 
 var cellWidth = 3
@@ -170,7 +176,7 @@ func PrintBoardStatus(b *Board) bool {
 
 func SaveBoard(b *Board, u string) error {
 	ufname := path.Join("games", path.Base(u))
-	return os.WriteFile(ufname, []byte(b.Fen()), 0644)
+	return os.WriteFile(ufname, []byte(b.Fen()+"\n"), 0644)
 }
 
 func LoadBoard(u string) (*Board, error) {
@@ -285,6 +291,20 @@ func show(u string) {
 	if PrintBoardStatus(b) {
 		DeleteBoard(u)
 	}
+}
+
+func hint(u string) {
+	fname := path.Join("games", path.Base(u))
+	if _, err := os.Stat(fname); err != nil {
+		fmt.Println("no game to hint")
+	}
+	fmt.Println("thinking...")
+	s, err := GetMove(fname)
+	if err != nil {
+		fmt.Println("oops: ", err)
+		return
+	}
+	fmt.Println("ok try", s)
 }
 
 func main() {
