@@ -94,6 +94,9 @@ func (s *State) lookupRoom(rn string) *room {
 var umodes = []string{"~", "@", "+", "=", "!", "&", "%"}
 
 func (s *State) addModeUser(r *room, u string) {
+	if len(u) == 0 {
+		return
+	}
 	umode, unick := "", u
 	for _, um := range umodes {
 		if um == u[:1] {
