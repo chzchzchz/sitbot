@@ -1,0 +1,18 @@
+{"Id":"botcheck-network",
+ "ServerURL" : "irc://my-znc:6697",
+ "Nick":"botcheck",
+ "User":"botcheck",
+ "RateMs" : 1,
+ "Verbosity" : 9,
+ "Pass":"user/network:pass",
+ "Chans":["#sitbot"],
+ "Patterns":
+ [
+	 {"Match" : "^.calc (?P<a>[0-9]+) \\+ (?P<b>[0-9]+)", "Template" : "botcheck-reply $a + $b"},
+	 {"Match" : "^(?P<v>[0-9]+)$", "Template" : "botcheck-attempt $v"}
+ ],
+ "PatternsRaw":
+ [
+        {"Match" : "^(?P<user>[^\\s]*)![^\\s]+ JOIN #sitbot$", "Template" : "botcheck-challenge $user"}
+ ]
+}

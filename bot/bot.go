@@ -73,25 +73,30 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 
 	limiter := rate.NewLimiter(rate.Every(time.Duration(p.RateMs)*time.Millisecond), 1)
 	b.Tasks = NewTasks(cctx, limiter, b.mc.MsgConn)
+
+	// Build pipeline.
 	b.dispatcher = NewDispatcher(&b.Profile, b.Tasks)
 	if err = b.Update(b.Profile); err != nil {
 		return nil, err
 	}
-
 	b.Login = NewLogin(&b.Profile.ProfileLogin, b.Tasks)
 	b.AddStage(b.Login)
-	b.AddStage(b.dispatcher)
+	if b.Verbosity > 0 {
+		b.AddStage(&Log{b.dispatcher})
+	} else {
+		b.AddStage(b.dispatcher)
+	}
 	b.AddStage(b.State)
-
+	// Login.
 	if err := b.Login.Run(); err != nil {
 		return nil, err
 	}
-
 	select {
 	case <-b.Login.Welcome():
 	case <-b.mc.ctx.Done():
 		return nil, ctx.Err()
 	}
+	// Join channels.
 	for _, ch := range p.Chans {
 		b.Tasks.Run("JOIN", "JOIN", func(t *Task) error {
 			return t.Write(irc.Message{Command: irc.JOIN, Params: []string{ch}})

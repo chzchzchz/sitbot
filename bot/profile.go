@@ -14,8 +14,10 @@ const defaultRateMs = 1000
 
 type Profile struct {
 	ProfileLogin
-	Chans  []string
-	RateMs int
+	Chans     []string
+	RateMs    int
+	Verbosity int
+
 	// Id is the way to reference this bot.
 	Id          string
 	Patterns    []Pattern

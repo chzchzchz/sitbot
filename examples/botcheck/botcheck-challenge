@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -eou pipefail
+
+u="$1"
+usha=`echo "$u" | shasum | awk ' { print $1 } '`
+mkdir -p botcheck_kicks/
+a=$RANDOM
+b=$RANDOM
+v=`bc <<<"$a + $b"`
+echo $v >botcheck_kicks/$usha
+echo ".calc $a + $b"
+sleep 60s
+if [ -e botcheck_kicks/$usha ]; then
+	curl ${SITBOT_URL}/bot/${SITBOT_ID} -XPOST \
+		-d'{"Command" : "KICK", "Params" : ["'"#sitbot"'","'"${u}"'", "sorry bots only"], "TaskId" : '"${SITBOT_TID}"'}' \
+		>/dev/null 2>&1
+fi

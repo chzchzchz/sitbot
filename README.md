@@ -58,3 +58,7 @@ curl localhost:12345/bouncer/mainbot -XPOST -d localhost:7777
 irssi -c localhost -p 7777
 ```
 
+
+## Tired of not getting Helped?
+
+The `irc.ltd` chat network generously hosts the official sitbot project support channel on [chat.irc.ltd:6697/#sitbot](irc://chat.irc.ltd:6697/#sitbot).

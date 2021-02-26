@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -eou pipefail
+
+u="${SITBOT_FROM}"
+usha=`echo "$u" | shasum | awk ' { print $1 } '`
+if [ ! -e botcheck_kicks/$usha ]; then
+	return
+fi
+(echo "$1" | diff botcheck_kicks/$usha - >/dev/null 2>&1) && rm -f botcheck_kicks/$usha && echo bot check ok
