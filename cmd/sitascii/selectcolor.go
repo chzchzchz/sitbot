@@ -67,14 +67,11 @@ func (ah *SelectColor) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 		return
 	}
 	// Resolve color.
+	var c color.Color
 	x, y := int(me.X/HueDim), int((me.Y-PaletteY)/HueDim)
-	if y >= len(ah.Hues) {
-		return
+	if y < len(ah.Hues) && x < len(ah.Hues[y]) {
+		c = ah.Hues[y][x]
 	}
-	if x >= len(ah.Hues[y]) {
-		return
-	}
-	c := ah.Hues[y][x]
 	// Set color.
 	if me.Down == 1 {
 		// fg

@@ -57,8 +57,6 @@ func NewASCII(dat string) (*ASCII, error) {
 			if v == ',' {
 				chompState, bg = 2, -1
 				continue
-			} else if fg == -1 {
-				return nil, ErrBadMircCode
 			}
 			chompState = 0
 		case 2:
@@ -164,6 +162,24 @@ func (a *ASCII) Put(c Cell, x, y int) {
 	a.Cells[y][x] = c
 }
 
+func (a *ASCII) MergePut(c Cell, x, y int) {
+	old := a.Get(x, y)
+	if old == nil {
+		a.Put(c, x, y)
+		return
+	}
+	if c.Value == ' ' {
+		c.Value, c.CharAttr = old.Value, old.CharAttr
+	}
+	if c.Foreground == nil {
+		c.Foreground = old.Foreground
+	}
+	if c.Background == nil {
+		c.Background = old.Background
+	}
+	a.Put(c, x, y)
+}
+
 func (a *ASCII) Columns() (w int) {
 	for _, row := range a.Cells {
 		if rw := len(row); rw > w {
@@ -222,7 +238,7 @@ func (a *ASCII) Paste(aa *ASCII, x, y int) {
 	for i := 0; i < aa.Columns(); i++ {
 		for j := 0; j < aa.Rows(); j++ {
 			if c := aa.Get(i, j); c != nil {
-				a.Put(*c, x+i, y+j)
+				a.MergePut(*c, x+i, y+j)
 			}
 		}
 	}
