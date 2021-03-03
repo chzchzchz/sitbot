@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eou pipefail
+
+ip=1
+f=`basename $1`
+if [ -e dcc/"$f" ]; then
+	sz=`stat -c"%s" dcc/"$f"`
+else
+	echo not found
+	exit 1
+fi
+pasvid=123
+port=0
+echo -en "\x01DCC SEND $1 $ip $port $sz $pasvid\x01"

@@ -1,0 +1,13 @@
+{"Id":"dcc",
+ "ServerURL" : "irc://my-znc:6697",
+ "Nick":"sitbot",
+ "User":"sitbot",
+ "Pass":"user/network:pass",
+ "Chans":["#sitbot"],
+ "Patterns":
+ [
+	 {"Match" : "^!start_dcc (?P<id>[^\\s]+)", "Template" : "start_dcc $id"},
+	 {"Match" : "\\x01DCC SEND (?P<f>[^\\s]+) (?P<ip>[0-9]+) (?P<port>[0-9]+) (?P<sz>[0-9]+) (?P<id>[^\\s]+)",
+	  "Template" : "tx_dcc $f $ip $port $sz"}
+ ]
+}

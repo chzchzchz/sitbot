@@ -1,0 +1,16 @@
+#!/bin/bash
+set -eou pipefail
+
+f=`basename "$1"`
+if [ ! -e dcc/"$f" ]; then
+	echo wut
+	exit 1
+fi
+ipn="$2"
+port="$3"
+sz="$4"
+ip=$(python -c "import socket; print(socket.inet_ntoa(($ipn).to_bytes(4,'big')))")
+echo "OK $f to $ip / $port / $sz"
+#  "\x01DCC SEND test.mp3 2130706433 39343 4285600 123\x01" matched to "tx_dcc"
+cat dcc/"$f" | torsocks nc "$ip" "$port" >/dev/null 2>&1
+echo "enjoy $f, pal"
