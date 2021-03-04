@@ -1,0 +1,14 @@
+{"Id":"fserv",
+ "ServerURL" : "irc://my-znc:6697",
+ "Nick":"sitbot",
+ "User":"sitbot",
+ "Pass":"user/network:pass",
+ "Chans":["#sitbot"],
+ "Patterns":
+ [
+	 {"Match" : "^!flist (?P<term>[^\\n]+)", "Template" : "flist $term"},
+	 {"Match" : "^!fget (?P<id>[0-9]+)", "Template" : "fget $id"},
+	 {"Match" : "\\x01DCC SEND (?P<f>[0-9]+\\.zip) (?P<ip>[0-9]+) (?P<port>[0-9]+) (?P<sz>[0-9]+) (?P<id>[^\\s]+)",
+	  "Template" : "tx_dcc $f $ip $port $sz"}
+ ]
+}

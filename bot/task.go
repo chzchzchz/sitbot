@@ -85,7 +85,7 @@ func NewTasks(ctx context.Context, l *rate.Limiter, mc *MsgConn) *Tasks {
 
 func (t *Tasks) Close() {
 	t.cancel()
-	t.wg.Done()
+	t.wg.Wait()
 }
 
 func (t *Tasks) Write(tid TaskId, msg irc.Message) error {

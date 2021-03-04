@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -eou pipefail
+
+BASEDIR=/mnt/bleh/albums/
+MINDEPTH=3
+
+function find_files {
+	find $BASEDIR -mindepth $MINDEPTH | grep -i "$1" | \
+		awk ' BEGIN { FS="/" } { print $5 "/" $6 "/" $7 } ' | sort | uniq | shuf -n5 | sort
+}
+idx=$(find $BASEDIR -mindepth $MINDEPTH  -type d   | sort | awk ' BEGIN { FS="/" } { print NR "/" $5 "/" $6 "/" $7 } ')
+
+find_files "$1" | while read a; do
+	v=`echo "$idx" | grep -a "$a" | head -n1`
+	sz=`du -hc "$BASEDIR/$(echo "$v" | cut -f2- -d/)" | tail -n1 | awk ' { print $1 } '`
+	echo $(echo "$v" | awk ' BEGIN { FS="/" } { print "#"$1 " - " $3" / "$4 } ') "($sz)"
+done
