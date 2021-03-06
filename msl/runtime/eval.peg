@@ -1,0 +1,86 @@
+package runtime
+
+type EvalGrammar Peg {
+	vtop string
+	v string
+	exprDepth int
+	varDepth int
+	exprStack []string
+	pastes []string
+	frames []callFrame
+	binOps []binOp
+	keepReferences bool
+	toppaste string
+}
+eval <- { p.v = ""; } _ws? eval_elem_+
+	(_ws '$+' _ws eval_elem_+)* _ws? !.
+
+eval_elem_ <-   { p.toppaste, p.v = p.v, "" } 
+		(((&[(%$\-0-9] { p.vtop = p.v } expr { p.v = p.vtop + p.v; } ) /
+		(identifier &_ws) /
+		(<word> { p.v += text }))
+		until_dollar_* /
+		until_dollar_+)
+		{ p.v = p.toppaste + p.v }
+
+until_dollar_ <- (!([$% \t]) <. (. [0-9]+)?> { p.v += text })
+
+identifier <- '$' ('+' / (<'null' / ([0-9]+ '-'?)> { p.v = p.msgTokens(text) }) / id_call / { p.v += "$" })
+id_call <- <word> { p.startCall(text) } args? { p.endCall() }
+
+args <- '(' _ws? arg (_ws? ',' _ws? arg _ws?)* ')'
+arg <- !')' _arg { p.addCallArg(p.v) }
+_arg <- subvalue_ value_append_? / (<arg_token> { p.v = text })
+arg_token <- (!_wsnl ![(,)] .)+
+
+# "%abc [ $+ k ] $+ ." needs precedence %abck $+ .
+subvalue_ <- ![({})] _ws? '[' _ws? value_ _ws? ']' _ws? /
+	 identifier / var / (<num> { p.v = text} )
+
+
+value_ <- (subvalue_ / (<token> { p.v = text } )) value_append_*
+value_append_ <- { p.startValueAppend() }
+		 ((_ws? '[' _ws? '$+' _ws? value_ _ws? ']' _ws?)
+		  / (_ws? '$+' _ws? value_) / (&'$' value_))
+		 {p.endValueAppend() }
+
+expr <- { p.exprDepth++ } _ws? e6star _ws? { p.exprDepth-- }
+# minimum precedence
+e6star <- e5star e6*
+e6 <- _ws? '||' { p.pushBinOp(orOp) }
+      _ws? e5star
+      { p.exprStack = append(p.exprStack, p.v); p.applyBinOp() }
+e5star <- e4star e5*
+e5 <- _ws? '&&' { p.pushBinOp(andOp) }
+      _ws? e4star
+      { p.exprStack = append(p.exprStack, p.v); p.applyBinOp() }
+e4star <- e3star e4*
+e4 <- _ws? ('==' { p.pushBinOp(eqOp) } /'!=' { p.pushBinOp(neOp) })
+      _ws? e3star
+      { p.exprStack = append(p.exprStack, p.v); p.applyBinOp() }
+e3star <- e2star e3*
+e3 <- _ws? ('<=' { p.pushBinOp(leOp) } /
+      '>=' { p.pushBinOp(geOp) } /
+      ('<' !'<') { p.pushBinOp(ltOp) } /
+      ('>' !'>') { p.pushBinOp(gtOp) } /
+      'isin' { p.pushBinOp(isIn) } /
+      '!isin' { p.pushBinOp(isNotIn) })
+      _ws? e2star
+      { p.exprStack = append(p.exprStack, p.v); p.applyBinOp() }
+e2star <- e1star e2*
+e2 <- _ws? (('+' !'+') / ('-' !'-') / '|' !'|' / '^')
+      _ws? e1star 
+      { panic("unsupported " + text) }
+e1star <- e0 e1*
+e1 <- _ws? ('*' / '/' / (!var '%') / '<<' / '>>')
+      _ws? e0
+      { panic("unsupported " + text) }
+# maximum precedence
+e0 <- '(' expr ')' / value_ / ('-' e0 { p.v = "-" + p.v } ) / ('!' e0 { p.v = "!" + p.v } )
+
+token <- (!(_wsnl / [$%,)]) .)+
+word <- [a-zA-Z0-9*]+
+var <- { p.varDepth++ } '%' value_ { p.v = p.evalVar(); p.varDepth-- }
+num <- [0-9]+ ('.' [0-9]+)?
+_ws <- [ \t]+
+_wsnl <- [ \t\n\r]+

@@ -1,0 +1,117 @@
+package msl
+
+type Grammar Peg {
+	Events []Event
+
+	evType string
+	level string
+	pattern string
+	location string
+	line int
+
+	cmdStack []*commandUnion
+	values []string
+	inId int
+	parenDepth int
+}
+
+Grammar <- _nl? ((on / unused) _nl?)* !.
+
+unused <- <(!'on' (!_nl .)+ [\r\n \t]*)+> { p.incLine(text) }
+on <- 'on' _ws
+      { p.Events = append(p.Events, Event{Line: p.Line()}) }
+      (on_text / on_join)
+      { p.closeEvent() }
+
+on_text <-  { p.evType = "text" }
+           ((level ":TEXT:" matchtext /	'$' level ":TEXT:" pcre) ':' location ':' _ws? command)
+
+on_join <- { p.evType = "join" }
+	   level ":JOIN:" location_ch ':' _ws? command
+
+level <- <('*' / word)> { p.level = text }
+location <- <('?' / '*' / location_ch)> { p.location = text }
+location_ch <- <('#' word ',')* ('#' word) / '#'> { p.location = text }
+
+command <- { p.pushCommand(); p.parenDepth = 0; }
+           (cmd_block / cmd_if / cmd_while / ('/'? (cmd_var / cmd_timer / cmd_stmt)))
+
+cmd_block <- '{' _wsnl? (command cmd_block_push _wsnl?)+ '}'
+             { p.topCmd().Result = &p.topCmd().Block }
+cmd_block_push <- { p.nCmd(2).Block.Add(p.topCmd().Result); p.popCommand() }
+
+cmd_if <- 'if' _ws <expr> { p.topCmd().IfCmd.ifCond = text }
+	    _ws command
+	    { p.nCmd(2).IfCmd.ifCmd = p.topCmd().Result; p.popCommand() }
+            (_wsnl? 'elseif' _ws <expr>
+		{ p.topCmd().IfCmd.elseConds = append(p.topCmd().IfCmd.elseConds, text); p.values = nil }
+	    _ws command
+	    { p.nCmd(2).IfCmd.elseCmds = append(p.nCmd(2).IfCmd.elseCmds, p.topCmd().Result); p.popCommand() }
+	    )*
+            (_wsnl? 'else' _ws command
+	    { p.nCmd(2).IfCmd.elseCmds = append(p.nCmd(2).IfCmd.elseCmds, p.topCmd().Result); p.popCommand() })?
+	    { p.topCmd().Result = &p.topCmd().IfCmd }
+
+
+cmd_while <- 'while' _ws <expr> { p.topCmd().WhileCmd.cond = text } _ws command
+	    { p.nCmd(2).WhileCmd.cmd = p.topCmd().Result; p.popCommand() }
+	    { p.topCmd().Result = &p.topCmd().WhileCmd }
+
+cmd_var <- 'var' { p.pushValue("var") } _ws
+           <var> { p.pushValue(text) } _ws ('=' _ws)?
+	   { p.pushValue("") } expr stmt_end_
+cmd_timer <- { p.topCmd().Statement.Values = []string{"timer"} }
+             'timer' ( value / _ws '$+' _ws value)  _ws value _ws value _ws command
+	     stmt_end_
+
+cmd_stmt <- value (_ws? value)+ stmt_end_
+
+stmt_end_ <- { p.topCmd().Statement.Values = p.values }
+	     { p.topCmd().Result = &p.topCmd().Statement }
+
+value <- ![{}] { p.pushValue("") } value_
+value_ <- ('[' _ws? { p.addValue(" [ ") } value_ { p.addValue(" ] ") } _ws? ']' /
+         (<(var / identifier / num / vtoken)> { p.addValue(text) })) value_append_*
+
+vtoken <- ![()] token /  &{ p.parenDepth == 0 } token
+
+value_append_ <- (_ws '[' _ws '$+' _ws { p.addValue(" [ $+ "); } value_ { p.addValue(" ] "); } _ws ']') /
+		 (_ws '$+' { p.addValue (" $+ ") } _ws value_) /
+		 (&'$' value_)
+
+
+args <- lparen _ws? arg (_ws? ',' _ws? arg _ws?)* rparen
+arg <- _arg
+_arg <- '[' _ws? value_ _ws? ']' /
+	(<(identifier / var / num / arg_token)> { p.addValue(text) } )
+	value_append_?
+arg_token <- (!_wsnl ![(,)] .)+
+
+identifier <- { p.inId++ }
+	'$' ('+' / 'nick' / 'chan' / 'null' / ([1-9][0-9]* '-'?) / ([a-zA-Z]+ args?))
+	{ p.inId-- }
+
+expr <- uexpr exprp?
+exprp <- (_ws? (binary_op _ws? expr) exprp?)
+uexpr <- (unary_op _ws? uexpr)  / lparen _ws? expr _ws? rparen / !{ p.parenDepth-- } value_
+binary_op <- '||' / '&&' / rel_op / add_op / mul_op
+rel_op <-  '==' / '!=' / '<=' / '>=' / ('<' !'<') / ('>' !'>') / 'isin' / '!isin'
+add_op <- ('+' !'+') / ('-' !'-') / '|' / '^'
+mul_op <- '*' / '/' / (!var '%') / '<<' / '>>'
+unary_op <- ('+' !'+') / ('-' !'-') / '!'
+
+matchtext <- <('*')? (text / '&')* ('*')?> { p.pattern = text }
+pcre <- <word? '/' (![\r\n/] .)+ '/' word?> { p.pattern = text }
+
+token <- (!_wsnl .)+
+num <- [0-9]+ ('.' [0-9]+)?
+
+var <- '%' word !',' value_*
+text <- (!_nl ![:& ] .)+ / _ws
+word <- [a-zA-Z0-9*]+
+_ws <- [ \t]+
+_nl <- <[\r\n]+> { p.incLine(text) }
+_wsnl <- <[ \t\n\r]+> { p.incLine(text) }
+
+lparen <- !{ p.parenDepth++ } '('
+rparen <- ')' !{ p.parenDepth-- }
