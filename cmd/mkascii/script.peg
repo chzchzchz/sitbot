@@ -1,0 +1,41 @@
+package main
+
+import "image"
+
+type Grammar Peg {
+	script Script
+
+	nums []int
+	coords []image.Point
+	rectangle image.Rectangle
+	group *Group
+	id string
+	fgc int
+	bgc int
+}
+
+Grammar <- _wsnl? (command _wsnl?)* !.
+
+command <- group / stmt
+group <- 'group' _wsnl id { p.openGroup() } _wsnl? '{' _wsnl? (stmt _wsnl)* '}' { p.closeGroup() }
+
+stmt <- { p.nums, p.fgc, p.bgc = nil, -1, -1 }
+        (box / put / scale / clip / flip / rotate / mirror)
+
+box <- 'box' _ws rect _ws color { p.addStmt(p.box())  }
+put <- 'put' _ws id _ws xy { p.addStmt(p.put()) }
+scale <- 'scale' _ws xy { p.addStmt(p.scale()) }
+clip <- 'clip' _ws rect { p.addStmt(p.clip()) }
+flip <- 'flip' { p.addStmt(p.flip()) }
+mirror <- 'mirror' { p.addStmt(p.mirror()) }
+rotate <- 'rotate' _ws num { p.addStmt(p.rotate()) }
+
+rect <- xy _ws xy { p.rect() }
+xy <- num _ws num { p.xy() }
+num <- <('-'? [0-9]+)> { p.num(text) }
+id <- <(!_wsnl .)+> { p.id = text }
+
+color <- num { p.fgc = p.popNum() } _ws? (',' _ws? num { p.bgc = p.popNum() })? 
+
+_ws <- [ \t]+
+_wsnl <- <[ \t\n\r]+>

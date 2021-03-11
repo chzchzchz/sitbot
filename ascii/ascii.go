@@ -2,6 +2,7 @@ package ascii
 
 import (
 	"errors"
+	"image"
 	"unicode/utf8"
 )
 
@@ -53,12 +54,16 @@ func NewASCII(dat string) (*ASCII, error) {
 				fg, fgs = fg*10+int(v-'0'), fgs+1
 				continue
 			}
+			if fg == -1 {
+				// Reset color codes.
+				fg, bg = -1, -1
+			}
+			chompState = 0
 			fgs = 0
 			if v == ',' {
 				chompState, bg = 2, -1
 				continue
 			}
-			chompState = 0
 		case 2:
 			if v >= '0' && v <= '9' && bgs < 2 {
 				if bg == -1 {
@@ -234,12 +239,72 @@ func (a *ASCII) Bytes() []byte {
 	return txt
 }
 
-func (a *ASCII) Paste(aa *ASCII, x, y int) {
+func (a *ASCII) Paste(aa *ASCII, pt image.Point) {
 	for i := 0; i < aa.Columns(); i++ {
 		for j := 0; j < aa.Rows(); j++ {
 			if c := aa.Get(i, j); c != nil {
-				a.MergePut(*c, x+i, y+j)
+				a.MergePut(*c, pt.X+i, pt.Y+j)
 			}
+		}
+	}
+}
+
+func (a *ASCII) Clip(r image.Rectangle) {
+	aa, _ := NewASCII("")
+	for i := r.Min.X; i < r.Max.X; i++ {
+		for j := r.Min.Y; j < r.Max.Y; j++ {
+			if c := a.Get(i, j); c != nil {
+				aa.Put(*c, i, j)
+			}
+		}
+	}
+	a.Cells = aa.Cells
+}
+
+func (a *ASCII) Mirror() {
+	aa, _ := NewASCII("")
+	for i := 0; i < a.Columns(); i++ {
+		for j := 0; j < a.Rows(); j++ {
+			if c := a.Get(i, j); c != nil {
+				aa.Put(*c, (a.Columns()-1)-i, j)
+			}
+		}
+	}
+	a.Cells = aa.Cells
+}
+
+func (a *ASCII) Flip() {
+	aa, _ := NewASCII("")
+	for i := 0; i < a.Columns(); i++ {
+		for j := 0; j < a.Rows(); j++ {
+			if c := a.Get(i, j); c != nil {
+				aa.Put(*c, i, a.Rows()-1-j)
+			}
+		}
+	}
+	a.Cells = aa.Cells
+}
+
+func (a *ASCII) Scale(x, y int) {
+	aa, _ := NewASCII("")
+	for i := 0; i < a.Columns()/x; i++ {
+		for j := 0; j < a.Rows()/y; j++ {
+			if c := a.Get(x*i, y*j); c != nil {
+				aa.Put(*c, i, j)
+			}
+		}
+	}
+	a.Cells = aa.Cells
+}
+
+func (a *ASCII) Rotate(degrees int) {
+	panic("stub")
+}
+
+func (a *ASCII) Box(r image.Rectangle, c Cell) {
+	for i := r.Min.X; i < r.Max.X; i++ {
+		for j := r.Min.Y; j < r.Max.Y; j++ {
+			a.Put(c, i, j)
 		}
 	}
 }
