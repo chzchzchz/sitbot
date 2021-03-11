@@ -1,7 +1,10 @@
 #!/bin/bash
-# limit at 1024KB * 512
-ulimit -v 524288
-if [[ "$1" =~ ".super" ]]; then
-	exec scripts/"$1" "$2"
+
+s="$1"
+shift
+if [[ $s =~ ".super" ]] || [[ $s =~ "chess" ]]; then
+	exec ./scripts/"$s" $@
 fi
-exec ./sitbox "$1" "$2"
+# limit at 1024KB * 1024
+ulimit -v 1048576
+exec ./sitbox "$s" $@

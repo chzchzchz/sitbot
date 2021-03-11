@@ -19,7 +19,7 @@ func main() {
 	}
 	ctx, cancel := context.WithCancel(context.TODO())
 	cmdname := "scripts/" + os.Args[1]
-	cmd, err := bot.NewCmd(ctx, cmdname, []string{os.Args[2]}, nil)
+	cmd, err := bot.NewCmd(ctx, cmdname, os.Args[2:], nil)
 	if err != nil {
 		cancel()
 		os.Exit(1)
