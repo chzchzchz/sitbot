@@ -228,7 +228,32 @@ func (a *ASCII) Bytes() []byte {
 		}
 		lastAttr = ce.CharAttr
 
-		code = append(code, ce.Code(&mircPalette)...)
+		code = append(code, ce.MircCode(&mircPalette)...)
+		codelen := len(code)
+		newtxt := append(
+			txt[:ce.Start+inserts],
+			append(code, txt[ce.Start+inserts:]...)...)
+		inserts += codelen
+		txt = newtxt
+	}
+	return txt
+}
+
+func (a *ASCII) AnsiBytes() []byte {
+	txt, inserts := []byte(a.Text()), 0
+	for _, ce := range a.Colors() {
+		var code []byte
+		code = append(code, []byte("\u001b[0m")...)
+		if ce.Bold {
+			code = append(code, []byte("\u001b[1m")...)
+		}
+		if ce.Italic {
+			code = append(code, []byte("\u001b[3m")...)
+		}
+		if ce.Underline {
+			code = append(code, []byte("\u001b[4m")...)
+		}
+		code = append(code, ce.AnsiCode(&ansiPalette)...)
 		codelen := len(code)
 		newtxt := append(
 			txt[:ce.Start+inserts],
