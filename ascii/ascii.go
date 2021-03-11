@@ -261,7 +261,7 @@ func (a *ASCII) AnsiBytes() []byte {
 		inserts += codelen
 		txt = newtxt
 	}
-	return txt
+	return append(txt, []byte("\u001b[0m")...)
 }
 
 func (a *ASCII) Paste(aa *ASCII, pt image.Point) {
