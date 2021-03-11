@@ -54,12 +54,12 @@ func NewASCII(dat string) (*ASCII, error) {
 				fg, fgs = fg*10+int(v-'0'), fgs+1
 				continue
 			}
+			chompState, fgs = 0, 0
 			if fg == -1 {
 				// Reset color codes.
 				fg, bg = -1, -1
+				continue
 			}
-			chompState = 0
-			fgs = 0
 			if v == ',' {
 				chompState, bg = 2, -1
 				continue
