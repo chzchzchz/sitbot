@@ -14,10 +14,11 @@ type Grammar Peg {
 	bgc int
 }
 
-Grammar <- _wsnl? (command _wsnl?)* !.
+Grammar <- _wsnl? ((command / _comment) _comment? _wsnl?)* !.
 
 command <- group / stmt
-group <- 'group' _wsnl id { p.openGroup() } _wsnl? '{' _wsnl? (stmt _wsnl)* '}' { p.closeGroup() }
+group <- 'group' _wsnl id { p.openGroup() } _wsnl?
+         '{' _wsnl? ((stmt  / _comment) _comment? _wsnl)* '}' { p.closeGroup() }
 
 stmt <- { p.nums, p.fgc, p.bgc = nil, -1, -1 }
         (box / put / cput / scale / clip / flip / rotate / mirror)
@@ -40,3 +41,4 @@ color <- num { p.fgc = p.popNum() } _ws? (',' _ws? num { p.bgc = p.popNum() })?
 
 _ws <- [ \t]+
 _wsnl <- <[ \t\n\r]+>
+_comment <- (';' (![\n\r] .)*)
