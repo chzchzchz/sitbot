@@ -53,26 +53,38 @@ func (g *Grammar) color() ascii.ColorPair {
 	return ascii.ColorPair{fg, bg}
 }
 
+func (s *Script) loadASCII(id string) (*ascii.ASCII, error) {
+	if grp, ok := s.groups[id]; ok {
+		return run(grp.stmts)
+	}
+	bytes, err := os.ReadFile(id)
+	if err != nil {
+		return nil, err
+	}
+	return ascii.NewASCII(string(bytes))
+}
+
 func (g *Grammar) put() StmtFunc {
 	id, coord, s := g.id, g.popCoord(), g.script
 	return func(a *ascii.ASCII) (err error) {
-		grp, ok := s.groups[id]
-		var aa *ascii.ASCII
-		if ok {
-			if aa, err = run(grp.stmts); err != nil {
-				return err
-			}
-		} else {
-			bytes, err := os.ReadFile(id)
-			if err != nil {
-				return err
-			}
-			aa, err = ascii.NewASCII(string(bytes))
-			if err != nil {
-				return err
-			}
+		aa, err := s.loadASCII(id)
+		if err != nil {
+			return err
 		}
 		a.Paste(aa, coord)
+		return nil
+	}
+}
+
+func (g *Grammar) cput() StmtFunc {
+	id, coord, s := g.id, g.popCoord(), g.script
+	return func(a *ascii.ASCII) (err error) {
+		aa, err := s.loadASCII(id)
+		if err != nil {
+			return err
+		}
+		c := image.Pt(coord.X-aa.Columns()/2, coord.Y-aa.Rows()/2)
+		a.Paste(aa, c)
 		return nil
 	}
 }

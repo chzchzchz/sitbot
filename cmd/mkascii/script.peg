@@ -20,10 +20,11 @@ command <- group / stmt
 group <- 'group' _wsnl id { p.openGroup() } _wsnl? '{' _wsnl? (stmt _wsnl)* '}' { p.closeGroup() }
 
 stmt <- { p.nums, p.fgc, p.bgc = nil, -1, -1 }
-        (box / put / scale / clip / flip / rotate / mirror)
+        (box / put / cput / scale / clip / flip / rotate / mirror)
 
 box <- 'box' _ws rect _ws color { p.addStmt(p.box())  }
 put <- 'put' _ws id _ws xy { p.addStmt(p.put()) }
+cput <- 'cput' _ws id _ws xy { p.addStmt(p.cput()) }
 scale <- 'scale' _ws xy { p.addStmt(p.scale()) }
 clip <- 'clip' _ws rect { p.addStmt(p.clip()) }
 flip <- 'flip' { p.addStmt(p.flip()) }
