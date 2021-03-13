@@ -108,6 +108,12 @@ func (g *Grammar) scale() StmtFunc {
 func (g *Grammar) clip() StmtFunc {
 	r := g.rectangle
 	return func(a *ascii.ASCII) error {
+		if r.Max.X == 0 {
+			r.Max.X = a.Columns()
+		}
+		if r.Max.Y == 0 {
+			r.Max.Y = a.Rows()
+		}
 		a.Clip(r)
 		return nil
 	}
