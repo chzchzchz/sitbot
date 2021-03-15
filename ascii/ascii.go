@@ -3,6 +3,7 @@ package ascii
 import (
 	"errors"
 	"image"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -150,9 +151,23 @@ func (a *ASCII) Get(x, y int) *Cell {
 	return &a.Cells[y][x]
 }
 
-func (a *ASCII) Put(c Cell, x, y int) {
+func (a *ASCII) PutString(s string, x, y int) {
+	for i, l := range strings.Split(s, "\n") {
+		j := 0
+		for _, v := range l {
+			if c := a.Get(x+j, y+i); c != nil {
+				c.Value = v
+			} else {
+				a.Put(Cell{Value: v}, x+j, y+i)
+			}
+			j++
+		}
+	}
+}
+
+func (a *ASCII) Put(c Cell, x, y int) *Cell {
 	if x < 0 || y < 0 {
-		return
+		return nil
 	}
 	if y >= len(a.Cells) {
 		for y >= len(a.Cells) {
@@ -165,6 +180,7 @@ func (a *ASCII) Put(c Cell, x, y int) {
 		}
 	}
 	a.Cells[y][x] = c
+	return &a.Cells[y][x]
 }
 
 func (a *ASCII) MergePut(c Cell, x, y int) {
