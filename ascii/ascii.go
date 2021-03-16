@@ -71,6 +71,9 @@ func NewASCII(dat string) (*ASCII, error) {
 					bg = 0
 				}
 				bg, bgs = bg*10+int(v-'0'), bgs+1
+				if bgs == 2 {
+					bgs, chompState = 0, 0
+				}
 				continue
 			}
 			bgs, chompState = 0, 0

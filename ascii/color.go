@@ -38,15 +38,16 @@ func (c ColorPair) MircCode(p *Palette) []byte {
 		panic("invalid fg")
 	}
 	ret := []byte{'\x03'}
-	ret = append(ret, []byte(fmt.Sprintf("%d", fgc))...)
 	if c.Background == nil {
-		return ret
+		return append(ret, []byte(fmt.Sprintf("%02d", fgc))...)
 	}
+	ret = append(ret, []byte(fmt.Sprintf("%d", fgc))...)
 	bgc := lookupMircIndex(c.Background)
 	if bgc == -1 {
 		panic("invalid bg")
 	}
-	ret = append(ret, []byte(fmt.Sprintf(",%d", bgc))...)
+	// TODO: peephole optimization when <10 bg byte is not adjacent to numeric.
+	ret = append(ret, []byte(fmt.Sprintf(",%02d", bgc))...)
 	return ret
 }
 
