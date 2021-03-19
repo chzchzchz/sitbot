@@ -352,3 +352,7 @@ func (a *ASCII) Box(r image.Rectangle, c Cell) {
 		}
 	}
 }
+
+func (a *ASCII) Rectangle() image.Rectangle {
+	return image.Rect(0, 0, a.Columns(), a.Rows())
+}
