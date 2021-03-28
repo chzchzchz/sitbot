@@ -32,6 +32,31 @@ o_o│
 │ ╭╯`,
 }
 
+var pals2 = []string{
+	`
+╭──╮
+O O│
+╰o │
+`,
+	`
+╭──╮
+│O O
+│ o╯`,
+}
+
+var pals3 = []string{
+	`
+╭──╮
+o o│
+│- │
+╰╮ │`,
+	`
+╭──╮
+│o o
+│ -│
+│ ╭╯`,
+}
+
 var floor = "─"
 
 func main() {
@@ -46,7 +71,13 @@ func main() {
 		}
 		p := rand.Intn(2)
 		neckHeight := rand.Intn(y-2) - 1
-		a.PutString(pals[p][1:], i, y-4-neckHeight)
+		if rand.Intn(12) != 0 {
+			a.PutString(pals[p][1:], i, y-4-neckHeight)
+		} else if neckHeight <= y-5 && rand.Intn(12) != 0 {
+			a.PutString(pals3[p][1:], i, y-5-neckHeight)
+		} else {
+			a.PutString(pals2[p][1:], i, y-4-neckHeight)
+		}
 		for j := 0; j <= neckHeight; j++ {
 			a.PutString(necks[p][1:], i, (y - neckHeight + j - 1))
 		}
