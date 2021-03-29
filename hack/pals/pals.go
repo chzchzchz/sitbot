@@ -73,7 +73,7 @@ func main() {
 		neckHeight := rand.Intn(y-2) - 1
 		if rand.Intn(12) != 0 {
 			a.PutString(pals[p][1:], i, y-4-neckHeight)
-		} else if neckHeight <= y-5 && rand.Intn(12) != 0 {
+		} else if neckHeight <= y-5 && rand.Intn(12) <= 6 {
 			a.PutString(pals3[p][1:], i, y-5-neckHeight)
 		} else {
 			a.PutString(pals2[p][1:], i, y-4-neckHeight)
