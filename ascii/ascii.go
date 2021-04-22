@@ -293,6 +293,26 @@ func (a *ASCII) Paste(aa *ASCII, pt image.Point) {
 	}
 }
 
+// PutTrimASCII puts with transparent spaces up to the first non-space on a row,
+// then uses all overwriting spaces.
+func (a *ASCII) PutTrimASCII(aa *ASCII, pt image.Point) {
+	for j := 0; j < aa.Rows(); j++ {
+		pastws := false
+		for i := 0; i < aa.Columns(); i++ {
+			c := aa.Get(i, j)
+			if c == nil {
+				break
+			}
+			if c.Value != ' ' {
+				pastws = true
+			}
+			if pastws {
+				a.Put(*c, pt.X+i, pt.Y+j)
+			}
+		}
+	}
+}
+
 func (a *ASCII) Clip(r image.Rectangle) {
 	aa, _ := NewASCII("")
 	for i := r.Min.X; i < r.Max.X; i++ {
