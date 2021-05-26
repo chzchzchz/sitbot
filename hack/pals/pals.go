@@ -69,8 +69,16 @@ func main() {
 			a.PutString(floor, i, y)
 			continue
 		}
+		//		neckHeight := rand.Intn(y-2) - 1
+		stddev := float64(y-2) / 3.0
+		mu := float64(y / 4.0)
+		neckHeight := int(rand.NormFloat64()*stddev + mu)
+		if neckHeight >= y-3 {
+			neckHeight = y - 4
+		} else if neckHeight < 0 {
+			neckHeight = 0
+		}
 		p := rand.Intn(2)
-		neckHeight := rand.Intn(y-2) - 1
 		if rand.Intn(12) != 0 {
 			a.PutString(pals[p][1:], i, y-4-neckHeight)
 		} else if neckHeight <= y-5 && rand.Intn(12) <= 6 {
