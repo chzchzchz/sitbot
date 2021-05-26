@@ -22,37 +22,37 @@ var necks = []string{
 var pals = []string{
 	`
 ╭──╮
-o_o│
+=_=│
 ╰╮ │
 
 `,
 	`
 ╭──╮
-│o_o
+│=_=
 │ ╭╯`,
 }
 
 var pals2 = []string{
 	`
 ╭──╮
-O O│
+= =│
 ╰o │
 `,
 	`
 ╭──╮
-│O O
+│= =
 │ o╯`,
 }
 
 var pals3 = []string{
 	`
 ╭──╮
-o o│
+= =│
 │- │
 ╰╮ │`,
 	`
 ╭──╮
-│o o
+│= =
 │ -│
 │ ╭╯`,
 }
