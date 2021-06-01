@@ -27,6 +27,9 @@ func main() {
 	defer func() {
 		cancel()
 		cmd.Close()
+		if rc := cmd.ProcessState.ExitCode(); rc != 0 {
+			os.Exit(rc)
+		}
 	}()
 	lastline := ""
 	backoff := BackoffBase
@@ -48,7 +51,7 @@ func main() {
 			}
 		case <-time.After(LineTimeout):
 			os.Stdout.WriteString("TIMEOUT\n")
-			return
+			os.Exit(2)
 		}
 	}
 }
