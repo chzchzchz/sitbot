@@ -19,6 +19,7 @@ type Cmd struct {
 func NewCmd(ctx context.Context, cmdname string, args []string, env []string) (*Cmd, error) {
 	donec, linec := make(chan struct{}), make(chan string, 5)
 	cmd := exec.CommandContext(ctx, cmdname, args...)
+	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(), env...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -34,7 +35,7 @@ func NewCmd(ctx context.Context, cmdname string, args []string, env []string) (*
 		defer func() {
 			close(linec)
 			stdout.Close()
-			if err := cmd.Wait(); err != nil {
+			if err := cmd.Wait(); c.err == nil {
 				c.err = err
 			}
 			close(donec)
@@ -42,7 +43,9 @@ func NewCmd(ctx context.Context, cmdname string, args []string, env []string) (*
 		for {
 			l, err := lr.ReadString('\n')
 			if err != nil {
-				c.err = err
+				if err != io.EOF {
+					c.err = err
+				}
 				if l == "" {
 					break
 				}

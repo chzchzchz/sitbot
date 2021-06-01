@@ -37,7 +37,7 @@ func (t *Task) Write(msg irc.Message) error {
 	return nil
 }
 
-func (t *Task) PipeCmd(cmdtxt, tgt string, env []string) error {
+func (t *Task) PipeCmd(cmdtxt, tgt string, env []string) (err error) {
 	cctx, cancel := context.WithCancel(t.ctx)
 	tidenv := fmt.Sprintf("SITBOT_TID=%d", t.tid)
 	toks := strings.Split(cmdtxt, " ")
@@ -50,7 +50,9 @@ func (t *Task) PipeCmd(cmdtxt, tgt string, env []string) error {
 	}
 	defer func() {
 		cancel()
-		cmd.Close()
+		if err2 := cmd.Close(); err == nil {
+			err = err2
+		}
 	}()
 	for l := range cmd.Lines() {
 		out := irc.Message{Command: irc.PRIVMSG, Params: []string{tgt, l}}
