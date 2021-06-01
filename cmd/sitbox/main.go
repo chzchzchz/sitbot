@@ -26,9 +26,8 @@ func main() {
 	}
 	defer func() {
 		cancel()
-		cmd.Close()
-		if rc := cmd.ProcessState.ExitCode(); rc != 0 {
-			os.Exit(rc)
+		if err := cmd.Close(); err != nil {
+			os.Exit(1)
 		}
 	}()
 	lastline := ""
