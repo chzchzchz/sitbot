@@ -46,7 +46,10 @@ func (d *Dispatcher) processPrivMsg(t *Task, msg irc.Message) error {
 		outtgt = sender
 	}
 	cmdtxt := strings.Replace(t.Command, "%s", sender, -1)
-	env := append(d.Env(), "SITBOT_FROM="+sender, "SITBOT_CHAN="+tgt)
+	env := append(d.Env(),
+		"SITBOT_FROM="+sender,
+		"SITBOT_CHAN="+tgt,
+		"SITBOT_MSG="+msg.Params[1])
 	return t.PipeCmd(cmdtxt, outtgt, env)
 }
 
