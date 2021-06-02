@@ -1,3 +1,4 @@
+//go:generate peg -inline eval.peg
 package runtime
 
 import (

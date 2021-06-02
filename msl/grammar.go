@@ -1,3 +1,4 @@
+//go:generate peg -inline msl.peg
 package msl
 
 func (g *Grammar) Line() int {

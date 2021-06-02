@@ -1,3 +1,6 @@
+//go:generate peg -inline ../../msl/msl.peg
+//go:generate peg -inline ../../msl/runtime/eval.peg
+
 package main
 
 import (
