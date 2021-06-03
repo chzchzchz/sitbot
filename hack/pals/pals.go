@@ -88,7 +88,7 @@ func main() {
 			continue
 		}
 		n := rand.Intn(2)
-		if rand.Intn(12) == 0 {
+		if rand.Intn(8) == 0 {
 			n = rand.Intn(len(caps))
 		}
 		palcap := caps[n]

@@ -35,26 +35,6 @@ func mustLines(path string) []string {
 	return ss
 }
 
-var boxCorner = []rune{'╭', '╮', '╰', '╯'}
-var boxSide = []rune{'─', '│'}
-
-func box(w, h int) *ascii.ASCII {
-	out, _ := ascii.NewASCII("")
-	for x := 1; x < w-1; x++ {
-		out.Put(ascii.Cell{Value: boxSide[0]}, x, 0)
-		out.Put(ascii.Cell{Value: boxSide[0]}, x, h-1)
-	}
-	for y := 1; y < h-1; y++ {
-		out.Put(ascii.Cell{Value: boxSide[1]}, 0, y)
-		out.Put(ascii.Cell{Value: boxSide[1]}, w-1, y)
-	}
-	out.Put(ascii.Cell{Value: boxCorner[0]}, 0, 0)
-	out.Put(ascii.Cell{Value: boxCorner[1]}, w-1, 0)
-	out.Put(ascii.Cell{Value: boxCorner[2]}, 0, h-1)
-	out.Put(ascii.Cell{Value: boxCorner[3]}, w-1, h-1)
-	return out
-}
-
 func makeCard(pal *ascii.ASCII, notice string, val string) *ascii.ASCII {
 	out, _ := ascii.NewASCII("")
 	y := 0
@@ -64,7 +44,7 @@ func makeCard(pal *ascii.ASCII, notice string, val string) *ascii.ASCII {
 	y += 1
 	boxw := max(len(val)+2, len(notice)+2)
 	boxw = max(pal.Columns(), boxw)
-	out.Paste(box(boxw, 3), image.Pt(0, y))
+	out.Paste(ascii.RoundBox(image.Pt(boxw, 3)), image.Pt(0, y))
 	y += 1
 	out.PutString(val, 1, y)
 	return out

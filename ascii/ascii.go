@@ -365,14 +365,6 @@ func (a *ASCII) Rotate(degrees int) {
 	panic("stub")
 }
 
-func (a *ASCII) Box(r image.Rectangle, c Cell) {
-	for i := r.Min.X; i < r.Max.X; i++ {
-		for j := r.Min.Y; j < r.Max.Y; j++ {
-			a.Put(c, i, j)
-		}
-	}
-}
-
 func (a *ASCII) Rectangle() image.Rectangle {
 	return image.Rect(0, 0, a.Columns(), a.Rows())
 }
