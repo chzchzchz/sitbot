@@ -88,7 +88,8 @@ _arg <- '[' _ws? value_ _ws? ']' /
 arg_token <- (!_wsnl ![(,)] .)+
 
 identifier <- { p.inId++ }
-	'$' ('+' / 'nick' / 'chan' / 'null' / ([1-9][0-9]* '-'?) / ([a-zA-Z]+ args?))
+	'$' (	('+' / 'null' /  ([1-9][0-9]* '-'?)) /
+		([a-zA-Z]+ (&'(' args)?))
 	{ p.inId-- }
 
 expr <- uexpr exprp?

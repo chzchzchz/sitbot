@@ -172,8 +172,31 @@ func (g *EvalGrammar) endCall() {
 			panic("no channel")
 		}
 	case "nick":
-		if v = mslEv.Nick; v == "" {
-			panic("no nick")
+		v= "???"
+		if len(top.args) == 0 {
+			if v = mslEv.Nick; v == "" {
+				panic("no nick")
+			}
+		} else if len(top.args) == 2 {
+			nn := Nicks(top.args[0])
+			n, err := strconv.Atoi(top.args[1])
+			if err != nil {
+				// nick mode
+				v = "$null"
+				for i, nick := range nn {
+					if nick == top.args[1] {
+						v = fmt.Sprintf("%d", i)
+						break
+					}
+				}
+			} else if n == 0 {
+				// count mode
+				v = fmt.Sprintf("%d", len(nn))
+			} else if n > 0 && n <= len(nn) {
+				v = nn[n-1]
+			} else {
+				v = ""
+			}
 		}
 	case "upper":
 		v = strings.ToUpper(top.args[0])

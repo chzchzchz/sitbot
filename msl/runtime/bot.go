@@ -34,13 +34,20 @@ func MustBotState() *bot.State {
 }
 
 func NopNicks(channame string) (ret []string) {
-	bs := MustBotState()
-	r := bs.Channels[channame]
-	if r == nil {
-		return ret
+	if r := MustBotState().Channels[channame]; r != nil {
+		for uname, ru := range r.Users {
+			if !strings.Contains(ru.Mode, "@") {
+				ret = append(ret, uname)
+			}
+		}
 	}
-	for uname, ru := range r.Users {
-		if !strings.Contains(ru.Mode, "@") {
+	sort.Strings(ret)
+	return ret
+}
+
+func Nicks(channame string) (ret []string) {
+	if r := MustBotState().Channels[channame]; r != nil {
+		for uname := range r.Users {
 			ret = append(ret, uname)
 		}
 	}
