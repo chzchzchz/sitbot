@@ -38,6 +38,7 @@ func TestVarSet(t *testing.T) {
 		{"\x0f\x038,4$5000!!! $+ \x0311,6", "\x0f\x038,4$5000!!!\x0311,6"},
 		{"$bytes(%moneytestnick,b)", "1,123"},
 		{"8,7$1,000,000", "8,7$1,000,000"},
+		{"$upper($nick) $+ ,", "TESTNICK,"},
 	}
 	for _, tt := range tts {
 		if v := eval(tt.in); v != tt.out {

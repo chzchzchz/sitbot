@@ -2,13 +2,9 @@
 package runtime
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
-	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -36,6 +32,16 @@ func mustVar(s string) {
 	}
 }
 
+func joinNoEmptySpaces(s []string) string {
+	for i := 0; i < len(s); i++ {
+		if s[i] == "" {
+			s = append(s[:i], s[i+1:]...)
+			i--
+		}
+	}
+	return strings.Join(s, " ")
+}
+
 func Stmt(values ...string) {
 	// Evaluate every term to get concrete statement.
 	terms := make([]string, len(values))
@@ -48,7 +54,7 @@ func Stmt(values ...string) {
 	case "msg":
 		msg := &irc.Message{
 			Command: irc.PRIVMSG,
-			Params:  []string{terms[1], strings.Join(terms[2:], " ")},
+			Params:  []string{terms[1], joinNoEmptySpaces(terms[2:])},
 		}
 		mustPostCommand(msg)
 	case "mode":
@@ -160,7 +166,7 @@ func (g *EvalGrammar) endCall() {
 	top := g.frames[i]
 	v := ""
 	log.Println("issuing call", top.cmd, top.args)
-	switch top.cmd {
+	switch strings.ToLower(top.cmd) {
 	case "chan":
 		if v = mslEv.Chan; v == "" {
 			panic("no channel")
@@ -215,39 +221,30 @@ func (g *EvalGrammar) endCall() {
 		}
 	case "int":
 		v = fmt.Sprintf("%d", int(s2f(top.args[0])))
+	case "nopnick":
+		nn := NopNicks(top.args[0])
+		n, err := strconv.Atoi(top.args[1])
+		if err != nil {
+			// nick mode
+			v = "$null"
+			for i, nick := range nn {
+				if nick == top.args[1] {
+					v = fmt.Sprintf("%d", i)
+					break
+				}
+			}
+		} else if n == 0 {
+			// count mode
+			v = fmt.Sprintf("%d", len(nn))
+		} else if n > 0 && n <= len(nn) {
+			v = nn[n-1]
+		} else {
+			v = ""
+		}
 	default:
 		panic(top.cmd + fmt.Sprintf("(%+v)", g.frames[i].args))
 	}
 	g.v, g.frames = v, g.frames[:i]
-}
-
-func mustPostCommand(msg *irc.Message) {
-	if err := postCommand(msg); err != nil {
-		panic(err)
-	}
-}
-
-func postCommand(msg *irc.Message) error {
-	jsonData, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	url := os.Getenv("SITBOT_URL") + "/bot/" + os.Getenv("SITBOT_ID")
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%s", resp.Status)
-	}
-	return nil
 }
 
 func (g *EvalGrammar) startValueAppend() {
