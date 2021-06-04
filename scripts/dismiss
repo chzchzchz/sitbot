@@ -1,0 +1,18 @@
+#!/bin/bash
+set -eou pipefail
+
+# get all tasks
+curlcmd="curl -s ${SITBOT_URL}/bot/${SITBOT_ID}"
+tids=`$curlcmd | jq '.Tasks.Tasks' | jq -r 'keys[]'`
+echo killing tasks $tids
+pids=""
+for tid in $tids; do
+	# kill all tasks but this one
+	if [ "$tid" != "${SITBOT_TID}" ]; then
+		$curlcmd -XPOST -d'{"Command" : "KILL", "TaskId" : '"$tid"'}' >/dev/null 2>&1
+		# echo killed $tid &
+		# pids="$pids $!"
+	fi
+done
+wait $pids
+echo dismissed!

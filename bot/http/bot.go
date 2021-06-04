@@ -41,6 +41,8 @@ func (h *botHandler) post(id string, w http.ResponseWriter, r *http.Request, b [
 	bot := h.g.Lookup(id)
 	if len(m.Command) == 0 || bot == nil {
 		return io.EOF
+	} else if m.Command == irc.KILL && len(m.Params) == 0 {
+		return bot.Tasks.Kill(m.TaskId)
 	}
 	return bot.Write(m.TaskId, m.Message)
 }

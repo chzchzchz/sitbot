@@ -24,6 +24,7 @@ type Task struct {
 	mc      *MsgConn
 	ctx     context.Context
 	cancel  context.CancelFunc
+	donec   <-chan struct{}
 }
 type TaskFunc func(*Task) error
 
@@ -57,6 +58,9 @@ func (t *Task) PipeCmd(cmdtxt, tgt string, env []string) (err error) {
 	for l := range cmd.Lines() {
 		out := irc.Message{Command: irc.PRIVMSG, Params: []string{tgt, l}}
 		if err := t.Write(out); err != nil {
+			return err
+		}
+		if err := cctx.Err(); err != nil {
 			return err
 		}
 	}
@@ -100,12 +104,25 @@ func (t *Tasks) Write(tid TaskId, msg irc.Message) error {
 	return tt.Write(msg)
 }
 
+func (t *Tasks) Kill(tid TaskId) error {
+	t.mu.RLock()
+	tt, ok := t.Tasks[tid]
+	t.mu.RUnlock()
+	if !ok {
+		return io.EOF
+	}
+	tt.cancel()
+	<-tt.donec
+	return nil
+}
+
 // Run puts a command in the task list and schedules it to run.
 func (t *Tasks) Run(name, cmdtxt string, f TaskFunc) {
 	cctx, cancel := context.WithCancel(t.ctx)
+	donec := make(chan struct{})
 	task := &Task{
 		Name: name, Start: Time(time.Now()), Command: cmdtxt,
-		mc: t.mc, ctx: cctx, cancel: cancel}
+		mc: t.mc, ctx: cctx, cancel: cancel, donec: donec}
 	t.mu.Lock()
 	t.tid++
 	tid := t.tid
@@ -117,6 +134,7 @@ func (t *Tasks) Run(name, cmdtxt string, f TaskFunc) {
 			t.mu.Lock()
 			delete(t.Tasks, task.tid)
 			t.mu.Unlock()
+			close(donec)
 			t.wg.Done()
 		}()
 		if t.limiter.Wait(task.ctx) != nil {
