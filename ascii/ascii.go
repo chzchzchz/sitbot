@@ -365,6 +365,16 @@ func (a *ASCII) Rotate(degrees int) {
 	panic("stub")
 }
 
+func (a *ASCII) ClearText() {
+	for i := 0; i < a.Columns(); i++ {
+		for j := 0; j < a.Rows(); j++ {
+			if c := a.Get(i, j); c != nil {
+				c.Value = ' '
+			}
+		}
+	}
+}
+
 func (a *ASCII) Rectangle() image.Rectangle {
 	return image.Rect(0, 0, a.Columns(), a.Rows())
 }

@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"os"
 
 	"github.com/chzchzchz/sitbot/ascii"
@@ -97,6 +98,34 @@ func (g *Grammar) box() StmtFunc {
 	}
 }
 
+func eqColors(a, b color.Color) bool {
+	r1, g1, b1, _ := a.RGBA()
+	r2, g2, b2, _ := b.RGBA()
+	return r1 == r2 && g1 == g2 && b1 == b2
+}
+
+func (g *Grammar) fbox() StmtFunc {
+	r, c := g.rectangle, g.color()
+	setFg := func(cell *ascii.Cell) {
+		if cell == nil || (cell.Foreground == nil && cell.Background == nil) {
+			return
+		} else if cell.Background == nil {
+			cell.Foreground = c.Foreground
+		} else if eqColors(cell.Background, c.Foreground) {
+			cell.Foreground = c.Background
+		} else {
+			cell.Foreground = c.Foreground
+		}
+	}
+	return func(a *ascii.ASCII) error {
+		for i := r.Min.X; i < a.Columns() && i < r.Max.X; i++ {
+			for j := r.Min.Y; j < a.Rows() && j < r.Max.Y; j++ {
+				setFg(a.Get(i, j))
+			}
+		}
+		return nil
+	}
+}
 func (g *Grammar) scale() StmtFunc {
 	c := g.popCoord()
 	return func(a *ascii.ASCII) error {
@@ -137,6 +166,13 @@ func (g *Grammar) rotate() StmtFunc {
 	n := g.popNum()
 	return func(a *ascii.ASCII) error {
 		a.Rotate(n)
+		return nil
+	}
+}
+
+func (g *Grammar) clearText() StmtFunc {
+	return func(a *ascii.ASCII) error {
+		a.ClearText()
 		return nil
 	}
 }

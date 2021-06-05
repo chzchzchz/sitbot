@@ -21,9 +21,10 @@ group <- 'group' _wsnl id { p.openGroup() } _wsnl?
          '{' _wsnl? ((stmt  / _comment) _comment? _wsnl)* '}' { p.closeGroup() }
 
 stmt <- { p.nums, p.fgc, p.bgc = nil, -1, -1 }
-        (box / put / cput / scale / clip / flip / rotate / mirror)
+        (box / fbox / put / cput / scale / clip / flip / rotate / mirror / cleartext)
 
 box <- 'box' _ws rect _ws color { p.addStmt(p.box())  }
+fbox <- 'fbox' _ws rect _ws color { p.addStmt(p.fbox()) }
 put <- 'put' _ws id _ws xy { p.addStmt(p.put()) }
 cput <- 'cput' _ws id _ws xy { p.addStmt(p.cput()) }
 scale <- 'scale' _ws xy { p.addStmt(p.scale()) }
@@ -31,6 +32,7 @@ clip <- 'clip' _ws rect { p.addStmt(p.clip()) }
 flip <- 'flip' { p.addStmt(p.flip()) }
 mirror <- 'mirror' { p.addStmt(p.mirror()) }
 rotate <- 'rotate' _ws num { p.addStmt(p.rotate()) }
+cleartext <- 'cleartext' { p.addStmt(p.clearText()) }
 
 rect <- xy _ws xy { p.rect() }
 xy <- num _ws num { p.xy() }
