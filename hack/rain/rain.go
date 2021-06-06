@@ -65,7 +65,7 @@ func main() {
 		}
 	}
 
-	w, h := 80, (img.Rows()+1)/2
+	w, h := 80, (img.Rows()+1)/3
 	rate := (3 * w) / img.Columns()
 	s := &scene{}
 	for j := 0; j < n; j++ {
@@ -79,11 +79,9 @@ func main() {
 				// Impossible to place in this column.
 				continue
 			}
-			for {
-				r := rand.Intn(maxy)
-				if s.add(img.Rectangle().Add(image.Pt(i, r))) {
-					break
-				}
+			r := rand.Intn(maxy)
+			if s.add(img.Rectangle().Add(image.Pt(i, r))) {
+				break
 			}
 		}
 		s.render(out, img, h)
