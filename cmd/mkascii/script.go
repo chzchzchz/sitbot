@@ -104,10 +104,39 @@ func eqColors(a, b color.Color) bool {
 	return r1 == r2 && g1 == g2 && b1 == b2
 }
 
+func apply(a *ascii.ASCII, r image.Rectangle, f func(cell *ascii.Cell)) {
+	for i := r.Min.X; i < a.Columns() && i < r.Max.X; i++ {
+		for j := r.Min.Y; j < a.Rows() && j < r.Max.Y; j++ {
+			if c := a.Get(i, j); c != nil {
+				f(c)
+			}
+		}
+	}
+}
+
+func (g *Grammar) bbox() StmtFunc {
+	r, c, hard := g.rectangle, g.color(), g.hard
+	setBg := func(cell *ascii.Cell) {
+		if !hard && cell.Foreground == nil && cell.Background == nil {
+			return
+		} else if cell.Foreground == nil {
+			cell.Background = c.Foreground
+		} else if eqColors(cell.Foreground, c.Foreground) {
+			cell.Background = c.Foreground
+		} else {
+			cell.Background = c.Foreground
+		}
+	}
+	return func(a *ascii.ASCII) error {
+		apply(a, r, setBg)
+		return nil
+	}
+}
+
 func (g *Grammar) fbox() StmtFunc {
-	r, c := g.rectangle, g.color()
+	r, c, hard := g.rectangle, g.color(), g.hard
 	setFg := func(cell *ascii.Cell) {
-		if cell == nil || (cell.Foreground == nil && cell.Background == nil) {
+		if !hard && cell.Foreground == nil && cell.Background == nil {
 			return
 		} else if cell.Background == nil {
 			cell.Foreground = c.Foreground
@@ -118,14 +147,11 @@ func (g *Grammar) fbox() StmtFunc {
 		}
 	}
 	return func(a *ascii.ASCII) error {
-		for i := r.Min.X; i < a.Columns() && i < r.Max.X; i++ {
-			for j := r.Min.Y; j < a.Rows() && j < r.Max.Y; j++ {
-				setFg(a.Get(i, j))
-			}
-		}
+		apply(a, r, setFg)
 		return nil
 	}
 }
+
 func (g *Grammar) scale() StmtFunc {
 	c := g.popCoord()
 	return func(a *ascii.ASCII) error {

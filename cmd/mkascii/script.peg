@@ -12,6 +12,8 @@ type Grammar Peg {
 	id string
 	fgc int
 	bgc int
+	// Command will clobber fully transparent blocks.
+	hard bool
 }
 
 Grammar <- _wsnl? ((command / _comment) _comment? _wsnl?)* !.
@@ -20,11 +22,12 @@ command <- group / stmt
 group <- 'group' _wsnl id { p.openGroup() } _wsnl?
          '{' _wsnl? ((stmt  / _comment) _comment? _wsnl)* '}' { p.closeGroup() }
 
-stmt <- { p.nums, p.fgc, p.bgc = nil, -1, -1 }
-        (box / fbox / put / cput / scale / clip / flip / rotate / mirror / cleartext)
+stmt <- { p.nums, p.fgc, p.bgc, p.hard = nil, -1, -1, false }
+        (box / bbox / fbox / put / cput / scale / clip / flip / rotate / mirror / cleartext)
 
 box <- 'box' _ws rect _ws color { p.addStmt(p.box())  }
-fbox <- 'fbox' _ws rect _ws color { p.addStmt(p.fbox()) }
+bbox <- 'bbox' (_ws _hard)? _ws rect _ws color { p.addStmt(p.bbox()) }
+fbox <- 'fbox' (_ws _hard)? _ws rect _ws color { p.addStmt(p.fbox()) }
 put <- 'put' _ws id _ws xy { p.addStmt(p.put()) }
 cput <- 'cput' _ws id _ws xy { p.addStmt(p.cput()) }
 scale <- 'scale' _ws xy { p.addStmt(p.scale()) }
@@ -41,6 +44,7 @@ id <- <(!_wsnl .)+> { p.id = text }
 
 color <- num { p.fgc = p.popNum() } _ws? (',' _ws? num { p.bgc = p.popNum() })? 
 
+_hard <- 'hard' { p.hard = true }
 _ws <- [ \t]+
 _wsnl <- <[ \t\n\r]+>
 _comment <- (';' (![\n\r] .)*)
