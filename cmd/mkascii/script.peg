@@ -25,9 +25,9 @@ group <- 'group' _wsnl id { p.openGroup() } _wsnl?
 stmt <- { p.nums, p.fgc, p.bgc, p.hard = nil, -1, -1, false }
         (box / bbox / fbox / put / cput / scale / clip / flip / rotate / mirror / cleartext)
 
-box <- 'box' _ws rect _ws color { p.addStmt(p.box())  }
-bbox <- 'bbox' (_ws _hard)? _ws rect _ws color { p.addStmt(p.bbox()) }
-fbox <- 'fbox' (_ws _hard)? _ws rect _ws color { p.addStmt(p.fbox()) }
+box <- 'box' _ws rect_option _ws color { p.addStmt(p.box())  }
+bbox <- 'bbox' (_ws _hard)? _ws rect_option _ws color { p.addStmt(p.bbox()) }
+fbox <- 'fbox' (_ws _hard)? _ws rect_option _ws color { p.addStmt(p.fbox()) }
 put <- 'put' _ws id _ws xy { p.addStmt(p.put()) }
 cput <- 'cput' _ws id _ws xy { p.addStmt(p.cput()) }
 scale <- 'scale' _ws xy { p.addStmt(p.scale()) }
@@ -37,6 +37,7 @@ mirror <- 'mirror' { p.addStmt(p.mirror()) }
 rotate <- 'rotate' _ws num { p.addStmt(p.rotate()) }
 cleartext <- 'cleartext' { p.addStmt(p.clearText()) }
 
+rect_option <- (rect / ('?' { p.nums = append(p.nums, -1, -1, -1, -1); p.xy(); p.xy(); p.rect() }))
 rect <- xy _ws xy { p.rect() }
 xy <- num _ws num { p.xy() }
 num <- <('-'? [0-9]+)> { p.num(text) }

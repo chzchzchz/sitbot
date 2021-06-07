@@ -105,6 +105,9 @@ func eqColors(a, b color.Color) bool {
 }
 
 func apply(a *ascii.ASCII, r image.Rectangle, f func(cell *ascii.Cell)) {
+	if r == image.Rect(-1, -1, -1, -1) {
+		r = image.Rect(0, 0, a.Columns(), a.Rows())
+	}
 	for i := r.Min.X; i < a.Columns() && i < r.Max.X; i++ {
 		for j := r.Min.Y; j < a.Rows() && j < r.Max.Y; j++ {
 			if c := a.Get(i, j); c != nil {

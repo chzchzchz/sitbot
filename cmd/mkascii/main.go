@@ -97,6 +97,7 @@ func compile(cmd *cobra.Command, args []string) {
 	if err := g.Parse(); err != nil {
 		panic(err)
 	}
+	//g.PrintSyntaxTree()
 	g.Execute()
 	a, err := run(g.script.stmts)
 	if err != nil {
