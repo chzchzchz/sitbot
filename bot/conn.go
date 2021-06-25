@@ -55,7 +55,7 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 				return
 			}
 			if msg == nil {
-				slog.Info("got nil message on", conn.RemoteAddr().String())
+				slog.Info("got nil message on", "addr", conn.RemoteAddr().String())
 				continue
 			}
 			slog.Debug("irc reply", "command", msg.Command, "params", msg.Params, "prefix", msg.Prefix)

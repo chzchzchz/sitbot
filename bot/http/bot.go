@@ -20,9 +20,9 @@ func (h *botHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, id := path.Split(r.URL.Path)
 	switch r.Method {
 	case http.MethodGet:
-		errWrap(w, r, func() error { return h.get(id, w, r) })
+		errWrap(w, r, func() error { return h.get(id, w) })
 	case http.MethodDelete:
-		errWrap(w, r, func() error { return h.g.Delete(id) })
+		errWrap(w, r, func() error { return h.g.DeleteBot(id) })
 	case http.MethodPost:
 		postWrap(w, r, func(b []byte) error { return h.post(id, w, r, b) })
 	default:
@@ -39,9 +39,13 @@ func (h *botHandler) post(id string, w http.ResponseWriter, r *http.Request, b [
 	bot := h.g.Lookup(id)
 	if v, ok := r.Header["Content-Type"]; ok && v[0] == "application/octet-stream" {
 		q := r.URL.Query()
-		tgt := q["target"][0]
+		tgt := q.Get("target")
 		if tgt == "" {
 			return io.EOF
+		}
+		if bot == nil {
+			http.Error(w, "bot not found", http.StatusNotFound)
+			return nil
 		}
 		for _, l := range strings.Split(string(b), "\n") {
 			m := &BotPostMessage{
@@ -56,31 +60,32 @@ func (h *botHandler) post(id string, w http.ResponseWriter, r *http.Request, b [
 		if err := json.Unmarshal(b, m); err != nil {
 			return err
 		}
+		if len(m.Command) == 0 {
+			return io.EOF
+		}
+		if bot == nil {
+			http.Error(w, "bot not found", http.StatusNotFound)
+			return nil
+		}
 		return h.postMessage(bot, m)
 	}
 	return nil
 }
 
 func (h *botHandler) postMessage(b *bot.Bot, m *BotPostMessage) error {
-	if len(m.Command) == 0 || b == nil {
+	if len(m.Command) == 0 {
 		return io.EOF
 	} else if m.Command == irc.KILL && len(m.Params) == 0 {
 		return b.Tasks.Kill(m.TaskId)
 	}
-	slog.Debug("postMessage", "tid", m.TaskId, "command", m.Command, "params", m.Params, "botnil", b == nil)
+	slog.Debug("postMessage", "tid", m.TaskId, "command", m.Command, "params", m.Params)
 	return b.Write(m.TaskId, m.Message)
 }
 
-func (h *botHandler) get(id string, w http.ResponseWriter, r *http.Request) error {
-	bot := h.g.Lookup(id)
-	if bot == nil {
-		return io.EOF
+func (h *botHandler) get(id string, w http.ResponseWriter) error {
+	if bot := h.g.Lookup(id); bot != nil {
+		return writeJSON(bot, w)
 	}
-	b, err := json.Marshal(bot)
-	if err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(b)
-	return err
+	http.Error(w, "bot not found", http.StatusNotFound)
+	return nil
 }

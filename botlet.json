@@ -1,0 +1,12 @@
+{
+  "Name": "greet",
+  "Vars": {
+    "nick": "sitbot"
+  },
+  "Patterns": [
+    {
+      "Match": "(?i)^\\s*(hello|hi|hey)\\s+{{nick}}",
+      "Template": "greet %s"
+    }
+  ]
+}

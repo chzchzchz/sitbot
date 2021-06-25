@@ -24,12 +24,13 @@ func (d *Dispatcher) Env() []string {
 	return []string{"SITBOT_ID=" + d.Id, "SITBOT_NICK=" + d.Nick}
 }
 
-func (d *Dispatcher) Update(pats, rawpats []Pattern) error {
-	pm, err := NewPatternMatcher(pats)
+// Update rebuilds matchers using the supplied profile variables.
+func (d *Dispatcher) Update(pats, rawpats []Pattern, vars map[string]string) error {
+	pm, err := NewPatternMatcher(pats, vars)
 	if err != nil {
 		return err
 	}
-	pmraw, err := NewPatternMatcher(rawpats)
+	pmraw, err := NewPatternMatcher(rawpats, vars)
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,9 @@ type Bot struct {
 	Profile
 	Start Time
 
+	// Profile is resolved; sourceProfile preserves unexpanded rules for botlet refreshes.
+	sourceProfile Profile
+
 	dispatcher *Dispatcher
 	State      *State
 	Login      *Login
@@ -40,17 +43,26 @@ type Bot struct {
 
 func (b *Bot) Ctx() context.Context { return b.ctx }
 
-func (b *Bot) Update(p Profile) error {
-	if err := b.dispatcher.Update(p.Patterns, p.PatternsRaw); err != nil {
+// Compile first so a rejected pattern cannot publish a profile with stale dispatch rules.
+func (b *Bot) update(p, source Profile) error {
+	if err := b.dispatcher.Update(p.Patterns, p.PatternsRaw, p.Vars); err != nil {
 		return err
 	}
 	b.mu.Lock()
 	b.Profile = p
+	b.sourceProfile = source
 	b.mu.Unlock()
 	return nil
 }
 
-func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
+// Gang-created bots always retain their source profile for botlet refreshes.
+func (b *Bot) source() Profile {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.sourceProfile
+}
+
+func NewBot(ctx context.Context, p, source Profile) (_ *Bot, err error) {
 	cctx, cancel := context.WithCancel(ctx)
 	b := &Bot{Profile: p,
 		Start:  Time(time.Now()),
@@ -77,7 +89,7 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 
 	// Build pipeline.
 	b.dispatcher = NewDispatcher(&b.Profile, b.Tasks)
-	if err = b.Update(b.Profile); err != nil {
+	if err = b.update(b.Profile, source); err != nil {
 		return nil, err
 	}
 	b.Login = NewLogin(&b.Profile.ProfileLogin, b.Tasks)

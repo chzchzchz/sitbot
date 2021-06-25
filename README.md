@@ -29,6 +29,41 @@ sitbot localhost:12345 &
 
 A bot profile has connection information and regular expression pattern matching rules to control script activation. One sitbot process can manage multiple profiles connectiong to multiple servers. Post a JSON-encoded profile to the sitbot server to launch a new bot; see [profile.json](profile.json) for an example.
 
+#### Profile fields
+
+`Id` names the bot for management. `ServerURL`, `Nick`, and `Chans` configure the IRC connection, login, and channels. `Botlets` lists reusable botlets to compose into the profile. Local `Patterns` and `PatternsRaw` rules are combined with those botlets.
+
+### Botlets
+
+Botlets are reusable pattern sets with optional `Vars`. See [botlet.json](botlet.json) for an example. Create or update one with:
+```sh
+curl localhost:12345/botlet/greet -XPOST -d@botlet.json
+```
+Updates propagate to referencing bots.
+
+#### Botlet fields
+
+A botlet's `Name` identifies it, `Vars` supplies placeholders, and its `Patterns` or `PatternsRaw` contain its rules.
+
+### Pattern fields
+
+`Match` is a Go regular expression. `Template` is the command produced when it matches; regex captures use `$1` or `${name}`. In a `Patterns` match from a private message, `%s` in the resulting command is replaced with the sender's nick.
+
+For example:
+```json
+{
+  "Match": "^(?P<cmd>\\w+)\\s+(?P<args>.*)$",
+  "Template": "$cmd $args"
+}
+```
+
+`Vars` supplies `{{key}}` values, which are substituted into both `Match` and `Template`; values used in `Match` should be valid regex fragments. A botlet's defaults apply when referenced. An object reference can override them:
+```json
+"Botlets": [{"Name":"greet","Vars":{"nick":"otherbot"}}]
+```
+
+`Patterns` rules match the text of a private message. `PatternsRaw` rules match the assembled IRC event and do not apply `%s`.
+
 ### Management
 
 Connect to an IRC network by posting a bot profile to sitbot:

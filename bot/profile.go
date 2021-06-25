@@ -18,10 +18,9 @@ type Profile struct {
 	RateMs    int
 	Verbosity int
 
-	// Id is the way to reference this bot.
-	Id          string
-	Patterns    []Pattern
-	PatternsRaw []Pattern
+	Botlet
+	Id      string
+	Botlets []BotletRef
 }
 
 type ProfileLogin struct {

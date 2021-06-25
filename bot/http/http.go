@@ -2,10 +2,12 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
-	"io/ioutil"
 	"log/slog"
 	"net/http"
+
+	"github.com/chzchzchz/sitbot/bot"
 )
 
 func errWrap(w http.ResponseWriter, r *http.Request, f func() error) (err error) {
@@ -13,7 +15,7 @@ func errWrap(w http.ResponseWriter, r *http.Request, f func() error) (err error)
 		r.Body.Close()
 		if err != nil {
 			slog.Error("http request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), statusForError(err))
 		} else {
 			slog.Debug("http request ok", "method", r.Method, "path", r.URL.Path)
 		}
@@ -26,16 +28,23 @@ func postWrap(w http.ResponseWriter, r *http.Request, f func(b []byte) error) (e
 		r.Body.Close()
 		if err != nil {
 			slog.Error("http request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), statusForError(err))
 		} else {
 			slog.Debug("http request ok", "method", r.Method, "path", r.URL.Path)
 		}
 	}()
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
 	return f(b)
+}
+
+func statusForError(err error) int {
+	if errors.Is(err, bot.ErrNotFound) {
+		return http.StatusNotFound
+	}
+	return http.StatusBadRequest
 }
 
 func ok(w http.ResponseWriter) error {
@@ -51,18 +60,4 @@ func writeJSON(v interface{}, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(b)
 	return err
-}
-
-type logHandler struct {
-	h   http.Handler
-	pfx string
-}
-
-func newLogHandler(pfx string, h http.Handler) http.Handler {
-	return &logHandler{h, pfx}
-}
-
-func (h *logHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	slog.Info("http request", "prefix", h.pfx, "method", r.Method, "path", r.URL.Path)
-	h.ServeHTTP(w, r)
 }

@@ -14,5 +14,8 @@ func NewGangHandler(g *bot.Gang) http.Handler {
 	bh := &botHandler{g: g}
 	mux.Handle("/bot/", http.StripPrefix("/bot", bh))
 
+	blh := &botletHandler{g: g}
+	mux.Handle("/botlet/", http.StripPrefix("/botlet", blh))
+
 	return mux
 }
