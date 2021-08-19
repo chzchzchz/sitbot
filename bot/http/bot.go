@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/chzchzchz/sitbot/bot"
 	"gopkg.in/sorcix/irc.v2"
@@ -34,17 +35,38 @@ type BotPostMessage struct {
 }
 
 func (h *botHandler) post(id string, w http.ResponseWriter, r *http.Request, b []byte) error {
-	m := &BotPostMessage{}
-	if err := json.Unmarshal(b, m); err != nil {
-		return err
-	}
 	bot := h.g.Lookup(id)
-	if len(m.Command) == 0 || bot == nil {
+	if v, ok := r.Header["Content-Type"]; ok && v[0] == "application/octet-stream" {
+		q := r.URL.Query()
+		tgt := q["target"][0]
+		if tgt == "" {
+			return io.EOF
+		}
+		for _, l := range strings.Split(string(b), "\n") {
+			m := &BotPostMessage{
+				Message: irc.Message{
+					Command: irc.PRIVMSG, Params: []string{tgt, l}}}
+			if err := h.postMessage(bot, m); err != nil {
+				return err
+			}
+		}
+	} else {
+		m := &BotPostMessage{}
+		if err := json.Unmarshal(b, m); err != nil {
+			return err
+		}
+		return h.postMessage(bot, m)
+	}
+	return nil
+}
+
+func (h *botHandler) postMessage(b *bot.Bot, m *BotPostMessage) error {
+	if len(m.Command) == 0 || b == nil {
 		return io.EOF
 	} else if m.Command == irc.KILL && len(m.Params) == 0 {
-		return bot.Tasks.Kill(m.TaskId)
+		return b.Tasks.Kill(m.TaskId)
 	}
-	return bot.Write(m.TaskId, m.Message)
+	return b.Write(m.TaskId, m.Message)
 }
 
 func (h *botHandler) get(id string, w http.ResponseWriter, r *http.Request) error {

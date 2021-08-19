@@ -34,10 +34,25 @@ func (h *authHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.h.ServeHTTP(w, r)
 }
 
+type corsHandler struct {
+	h http.Handler
+}
+
+func (h *corsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == http.MethodOptions {
+		return
+	}
+	h.h.ServeHTTP(w, r)
+}
+
 func main() {
 	laddrFlag := flag.String("l", "localhost:9991", "listen address")
 	userFlag := flag.String("u", "", "username for basic http authentication")
 	passFlag := flag.String("p", "", "password for basic http authentication")
+	corsFlag := flag.Bool("cors", false, "enable CORS")
 	flag.Parse()
 
 	laddr := *laddrFlag
@@ -57,6 +72,10 @@ func main() {
 	if len(*userFlag) > 0 {
 		log.Println("using basic authentication on user " + *userFlag)
 		h = &authHttpHandler{h: h, user: *userFlag, pass: *passFlag}
+	}
+	if *corsFlag {
+		log.Println("enabling CORS")
+		h = &corsHandler{h: h}
 	}
 
 	log.Println("serving bot on", laddr)
