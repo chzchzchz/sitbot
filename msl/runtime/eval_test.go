@@ -76,3 +76,43 @@ func TestCondition(t *testing.T) {
 		}
 	}
 }
+
+func TestMissingVar(t *testing.T) {
+	mslEv.Nick = "taters_backup"
+	mslVar.Globals["moneytaters"] = "1"
+	tts := []struct {
+		in  string
+		out string
+	}{
+		{"(%money [ $+ [ $nick ] ] == 1)", "false"},
+		// TODO: broken because of greedy variable evaluation $+ hack.
+		// {"(%money [ $+ [ $nick ] ] >= 1)", "false"},
+		{"(%money [ $+ [ $nick ] ] < 1)", "false"},
+		{"(%money [ $+ [ $nick ] ] != 1)", "true"},
+	}
+	for _, tt := range tts {
+		if v := eval(tt.in); v != tt.out {
+			t.Errorf("%q: wanted %q got %q", tt.in, tt.out, v)
+		}
+	}
+}
+
+func TestCompare01(t *testing.T) {
+	tts := []struct {
+		in  string
+		out string
+	}{
+		// tested on mirc
+		{"(01 != 1)", "true"},
+		{"(01 == 1)", "false"},
+		{"(01 >= 1)", "true"},
+		{"(01 <= 1)", "true"},
+		{"(01 < 1)", "false"},
+		{"(01 > 1)", "false"},
+	}
+	for _, tt := range tts {
+		if v := eval(tt.in); v != tt.out {
+			t.Errorf("%q: wanted %q got %q", tt.in, tt.out, v)
+		}
+	}
+}

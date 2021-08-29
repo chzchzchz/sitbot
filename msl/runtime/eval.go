@@ -172,7 +172,7 @@ func (g *EvalGrammar) endCall() {
 			panic("no channel")
 		}
 	case "nick":
-		v= "???"
+		v = "???"
 		if len(top.args) == 0 {
 			if v = mslEv.Nick; v == "" {
 				panic("no nick")
@@ -346,10 +346,29 @@ func b2s(b bool) string {
 func eqOp(a, b string) string { return b2s(strings.ToUpper(a) == strings.ToUpper(b)) }
 func neOp(a, b string) string { return b2s(strings.ToUpper(a) != strings.ToUpper(b)) }
 
-func geOp(a, b string) string { return b2s(s2f(a) >= s2f(b)) }
-func gtOp(a, b string) string { return b2s(s2f(a) > s2f(b)) }
-func leOp(a, b string) string { return b2s(s2f(a) <= s2f(b)) }
-func ltOp(a, b string) string { return b2s(s2f(a) < s2f(b)) }
+func op(a, b string, opF, opS binOp) string {
+	_, err1 := strconv.ParseFloat(a, 64)
+	_, err2 := strconv.ParseFloat(b, 64)
+	if err1 != nil || err2 != nil {
+		return opS(a, b)
+	}
+	return opF(a, b)
+}
+
+func geOp(a, b string) string { return op(a, b, geOpF, geOpS) }
+func gtOp(a, b string) string { return op(a, b, gtOpF, gtOpS) }
+func leOp(a, b string) string { return op(a, b, leOpF, leOpS) }
+func ltOp(a, b string) string { return op(a, b, ltOpF, ltOpS) }
+
+func geOpF(a, b string) string { return b2s(s2f(a) >= s2f(b)) }
+func gtOpF(a, b string) string { return b2s(s2f(a) > s2f(b)) }
+func leOpF(a, b string) string { return b2s(s2f(a) <= s2f(b)) }
+func ltOpF(a, b string) string { return b2s(s2f(a) < s2f(b)) }
+
+func geOpS(a, b string) string { return b2s(strings.Compare(a, b) >= 0) }
+func gtOpS(a, b string) string { return b2s(strings.Compare(a, b) > 0) }
+func leOpS(a, b string) string { return b2s(strings.Compare(a, b) <= 0) }
+func ltOpS(a, b string) string { return b2s(strings.Compare(a, b) < 0) }
 
 func orOp(a, b string) string  { return b2s(s2b(a) || s2b(b)) }
 func andOp(a, b string) string { return b2s(s2b(a) && s2b(b)) }
