@@ -54,31 +54,40 @@ func (s *State) Process(msg irc.Message) error {
 		}
 		u.Nick = newnick
 		for ch := range u.Channels {
-			r, ok := s.Channels[ch]
-			if !ok {
-				continue
+			if r, ok := s.Channels[ch]; ok {
+				if oldru, ok := r.Users[sender]; ok {
+					delete(r.Users, sender)
+					r.Users[newnick] = oldru
+				}
 			}
-			oldru, ok := r.Users[sender]
-			if !ok {
-				continue
-			}
-			delete(r.Users, sender)
-			r.Users[newnick] = oldru
 		}
+		delete(s.Users, sender)
+		s.Users[newnick] = u
+	case irc.QUIT:
+		sender := msg.Prefix.Name
+		if u, ok := s.Users[sender]; ok {
+			for ch := range u.Channels {
+				if r, ok := s.Channels[ch]; ok {
+					delete(r.Users, sender)
+				}
+			}
+			delete(s.Users, sender)
+		}
+	case irc.KICK:
+		s.removeUser(msg.Params[1], msg.Params[0])
 	case irc.PART:
-		sender, room := msg.Prefix.Name, msg.Params[0]
-		u, ok := s.Users[sender]
-		if !ok {
-			break
-		}
-		delete(u.Channels, room)
-		r, ok := s.Channels[room]
-		if !ok {
-			break
-		}
-		delete(r.Users, sender)
+		s.removeUser(msg.Prefix.Name, msg.Params[0])
 	}
 	return nil
+}
+
+func (s *State) removeUser(sender, room string) {
+	if u, ok := s.Users[sender]; ok {
+		delete(u.Channels, room)
+	}
+	if r, ok := s.Channels[room]; ok {
+		delete(r.Users, sender)
+	}
 }
 
 func (s *State) lookupRoom(rn string) *room {
