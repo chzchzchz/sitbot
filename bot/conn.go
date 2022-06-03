@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -51,6 +52,10 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 			if err != nil {
 				mc.Conn.Close()
 				return
+			}
+			if msg == nil {
+				log.Printf("got nil message on %s", conn.RemoteAddr().String())
+				continue
 			}
 			select {
 			case mc.readc <- *msg:
