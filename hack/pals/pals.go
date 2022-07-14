@@ -73,8 +73,10 @@ func loadCaps(dir string) (ret []*ascii.ASCII) {
 func main() {
 	paldir := ""
 	fill := ""
+
 	flag.StringVar(&paldir, "paldir", "", "directory of pal caps")
 	flag.StringVar(&fill, "fill", "", "fill string")
+	singlePal := flag.Bool("single", false, "one pal")
 	flag.Parse()
 	caps := loadCaps(paldir)
 
@@ -82,8 +84,18 @@ func main() {
 	a, _ := ascii.NewASCII("")
 	x, y := 70, 14
 	rate := 4
+
+	placePal := func() bool { return rand.Intn(rate) == 0 }
+	if *singlePal {
+		c := rand.Intn(x)
+		placePal = func() bool {
+			c--
+			return c == 0
+		}
+	}
+
 	for i := 0; i < x; i++ {
-		if rand.Intn(rate) != 0 {
+		if !placePal() {
 			a.PutString(floor, i, y)
 			continue
 		}
