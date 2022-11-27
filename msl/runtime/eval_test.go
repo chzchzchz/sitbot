@@ -116,3 +116,10 @@ func TestCompare01(t *testing.T) {
 		}
 	}
 }
+
+func TestTimtomsBustedWhileLoop(t *testing.T){
+	if v := eval("%dealertotal [ $+ [ israel ] ] <= 16"); v != "false" {
+		t.Errorf("%q: israel shouldn't exist, but Gamme thinks it does? - ",v)
+	}
+
+}
