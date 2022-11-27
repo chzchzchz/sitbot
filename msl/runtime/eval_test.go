@@ -18,7 +18,7 @@ func TestVarSet(t *testing.T) {
 	}{
 		{"var", "var"},
 		{"var ", "var"},
-		{"%r", "$null"},
+		{"%r", ""},
 		{"%money $+ $nick", "1123.1"},
 		{"\x038,9$nick", "\x038,9testnick"},
 		{"\x034,41$9000", "\x034,41$9000"},
@@ -80,6 +80,7 @@ func TestCondition(t *testing.T) {
 func TestMissingVar(t *testing.T) {
 	mslEv.Nick = "taters_backup"
 	mslVar.Globals["moneytaters"] = "1"
+	mslVar.Globals["abc"] = "$null"
 	tts := []struct {
 		in  string
 		out string
@@ -89,6 +90,75 @@ func TestMissingVar(t *testing.T) {
 		// {"(%money [ $+ [ $nick ] ] >= 1)", "false"},
 		{"(%money [ $+ [ $nick ] ] < 1)", "false"},
 		{"(%money [ $+ [ $nick ] ] != 1)", "true"},
+		{"(%dealertotal [ $+ abc ] <= 16)", "false"},
+		{"(%dealertotal [ $+ abc ] != 16)", "true"},
+		{"(%dealertotal [ $+ abc ] < 16)", "false"},
+		{"(%dealertotal [ $+ abc ] > 16)", "false"},
+		{"(%dealertotal [ $+ abc ] >= 16)", "false"},
+		{"(%dealertotal [ $+ abc ] <= %abc)", "true"},
+	}
+	for _, tt := range tts {
+		if v := eval(tt.in); v != tt.out {
+			t.Errorf("%q: wanted %q got %q", tt.in, tt.out, v)
+		}
+	}
+}
+
+func TestNull(t *testing.T) {
+	mslVar.Globals["abc"] = "$null"
+	mslVar.Globals["empty"] = ""
+	tts := []struct {
+		in  string
+		out string
+	}{
+		// empty vs number
+		{"(%empty >= 16)", "false"},
+		{"(%empty <= 16)", "false"},
+		{"(%empty < 16)", "false"},
+		{"(%empty > 16)", "false"},
+		{"(%empty != 16)", "true"},
+
+		{"($null == 16)", "false"},
+		{"($null <= 16)", "false"},
+
+		{"($null >= %abc)", "false"},
+		{"($null <= %abc)", "true"},
+		{"($null > %abc)", "false"},
+		{"($null < %abc)", "true"},
+		{"($null != %abc)", "true"},
+
+		// empty vs null
+		{"(%empty == $null)", "true"},
+		{"(%empty >= $null)", "true"},
+		{"(%empty <= $null)", "true"},
+		{"(%empty > $null)", "false"},
+		{"(%empty < $null)", "false"},
+		{"(%empty != $null)", "false"},
+
+		{"($null == $null)", "true"},
+		{"($null >= $null)", "true"},
+		{"($null <= $null)", "true"},
+		{"($null > $null)", "false"},
+		{"($null < $null)", "false"},
+		{"($null != $null)", "false"},
+
+		{"(%notset == $null)", "true"},
+		{"(%notset >= $null)", "true"},
+		{"(%notset <= $null)", "true"},
+		{"(%notset > $null)", "false"},
+		{"(%notset < $null)", "false"},
+		{"(%notset != $null)", "false"},
+
+		// string vs null
+		{"(abc == $null)", "false"},
+		{"(abc >= $null)", "true"},
+		{"(abc <= $null)", "false"},
+		{"(abc > $null)", "true"},
+		{"(abc < $null)", "false"},
+		{"(abc != $null)", "true"},
+
+		{"($int(%empty) == $null)", "true"},
+		{"($int($null) == $null)", "true"},
 	}
 	for _, tt := range tts {
 		if v := eval(tt.in); v != tt.out {

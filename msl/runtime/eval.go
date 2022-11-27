@@ -4,6 +4,7 @@ package runtime
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -165,7 +166,7 @@ func (g *EvalGrammar) endCall() {
 	i := len(g.frames) - 1
 	top := g.frames[i]
 	v := ""
-	log.Println("issuing call", top.cmd, top.args)
+	// log.Println("issuing call", top.cmd, top.args)
 	switch strings.ToLower(top.cmd) {
 	case "chan":
 		if v = mslEv.Chan; v == "" {
@@ -182,7 +183,7 @@ func (g *EvalGrammar) endCall() {
 			n, err := strconv.Atoi(top.args[1])
 			if err != nil {
 				// nick mode
-				v = "$null"
+				v = ""
 				for i, nick := range nn {
 					if nick == top.args[1] {
 						v = fmt.Sprintf("%d", i)
@@ -194,8 +195,6 @@ func (g *EvalGrammar) endCall() {
 				v = fmt.Sprintf("%d", len(nn))
 			} else if n > 0 && n <= len(nn) {
 				v = nn[n-1]
-			} else {
-				v = ""
 			}
 		}
 	case "upper":
@@ -243,13 +242,18 @@ func (g *EvalGrammar) endCall() {
 			v = v[l-vv:]
 		}
 	case "int":
-		v = fmt.Sprintf("%d", int(s2f(top.args[0])))
+		fv := s2f(top.args[0])
+		if math.IsNaN(fv) {
+			v = ""
+		} else {
+			v = fmt.Sprintf("%d", int(s2f(top.args[0])))
+		}
 	case "nopnick":
 		nn := NopNicks(top.args[0])
 		n, err := strconv.Atoi(top.args[1])
 		if err != nil {
 			// nick mode
-			v = "$null"
+			v = ""
 			for i, nick := range nn {
 				if nick == top.args[1] {
 					v = fmt.Sprintf("%d", i)
@@ -283,7 +287,7 @@ func (g *EvalGrammar) endValueAppend() {
 
 func (g *EvalGrammar) evalVar() (ret string) {
 	name, suffix := g.v, ""
-	ret = "$null"
+	ret = ""
 	for len(name) > 0 {
 		if g.keepReferences && g.varDepth < 2 {
 			ret = "%" + name
@@ -314,14 +318,21 @@ func (g *EvalGrammar) pushBinOp(f binOp) {
 }
 
 func s2f(s string) float64 {
-	if s == "$null" {
-		return 0
+	if len(s) == 0 {
+		return math.NaN()
 	}
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		panic(err)
 	}
 	return v
+}
+
+func s2f0(s string) float64 {
+	if len(s) == 0 {
+		return 0
+	}
+	return s2f(s)
 }
 
 func s2b(s string) bool {
@@ -346,13 +357,19 @@ func b2s(b bool) string {
 func eqOp(a, b string) string { return b2s(strings.ToUpper(a) == strings.ToUpper(b)) }
 func neOp(a, b string) string { return b2s(strings.ToUpper(a) != strings.ToUpper(b)) }
 
-func op(a, b string, opF, opS binOp) string {
-	_, err1 := strconv.ParseFloat(a, 64)
-	_, err2 := strconv.ParseFloat(b, 64)
-	if err1 != nil || err2 != nil {
-		return opS(a, b)
+func mayFloat(a string) bool {
+	if len(a) == 0 {
+		return true
 	}
-	return opF(a, b)
+	_, err := strconv.ParseFloat(a, 64)
+	return err == nil
+}
+
+func op(a, b string, opF, opS binOp) string {
+	if mayFloat(a) && mayFloat(b) {
+		return opF(a, b)
+	}
+	return opS(a, b)
 }
 
 func geOp(a, b string) string { return op(a, b, geOpF, geOpS) }
@@ -360,9 +377,11 @@ func gtOp(a, b string) string { return op(a, b, gtOpF, gtOpS) }
 func leOp(a, b string) string { return op(a, b, leOpF, leOpS) }
 func ltOp(a, b string) string { return op(a, b, ltOpF, ltOpS) }
 
-func geOpF(a, b string) string { return b2s(s2f(a) >= s2f(b)) }
+func bothEmpty(a, b string) bool { return len(a) == 0 && len(b) == 0 }
+
+func geOpF(a, b string) string { return b2s(bothEmpty(a, b) || s2f(a) >= s2f(b)) }
+func leOpF(a, b string) string { return b2s(bothEmpty(a, b) || s2f(a) <= s2f(b)) }
 func gtOpF(a, b string) string { return b2s(s2f(a) > s2f(b)) }
-func leOpF(a, b string) string { return b2s(s2f(a) <= s2f(b)) }
 func ltOpF(a, b string) string { return b2s(s2f(a) < s2f(b)) }
 
 func geOpS(a, b string) string { return b2s(strings.Compare(a, b) >= 0) }

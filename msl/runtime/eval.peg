@@ -25,7 +25,10 @@ eval_elem_ <-   { p.toppaste, p.v = p.v, "" }
 
 until_dollar_ <- (!([$% \t]) <. (. [0-9]+)?> { p.v += text })
 
-identifier <- '$' ('+' / (<'null' / ([0-9]+ '-'?)> { p.v = p.msgTokens(text) }) / id_call / { p.v += "$" })
+identifier <-
+	'$null' { p.v = "" } /
+	'$' ('+' / (<([0-9]+ '-'?)> { p.v = p.msgTokens(text) }) / id_call / { p.v += "$" })
+
 id_call <- <word> { p.startCall(text) } args? { p.endCall() }
 
 args <- '(' _ws? arg (_ws? ',' _ws? arg _ws?)* ')'
