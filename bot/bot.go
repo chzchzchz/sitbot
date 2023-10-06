@@ -94,7 +94,7 @@ func NewBot(ctx context.Context, p Profile) (_ *Bot, err error) {
 	select {
 	case <-b.Login.Welcome():
 	case <-b.mc.ctx.Done():
-		return nil, ctx.Err()
+		return nil, b.mc.ctx.Err()
 	}
 	// Join channels.
 	for _, ch := range p.Chans {
