@@ -13,9 +13,10 @@ type ColorExtent struct {
 }
 
 type CharAttr struct {
-	Italic    bool
-	Bold      bool
-	Underline bool
+	Italic        bool
+	Bold          bool
+	Underline     bool
+	Strikethrough bool
 }
 
 var DefaultCharAttr = CharAttr{}
