@@ -25,11 +25,13 @@ func NewASCII(dat string) (*ASCII, error) {
 	var cells [][]Cell
 	var row []Cell
 	chompState, fg, bg, fgs, bgs := 0, -1, -1, 0, 0
+	var bold, underline, italic, strikethrough bool
 	for _, v := range dat {
 		switch v {
 		case '\r':
 			continue
 		case '\n':
+			bold = false
 			cells = append(cells, row)
 			chompState, fg, bg = 0, -1, -1
 			row = nil
@@ -39,7 +41,14 @@ func NewASCII(dat string) (*ASCII, error) {
 		case 0:
 			switch v {
 			case '\x02':
+				bold = !bold
 				continue
+			case '\x1F':
+				underline = !underline
+			case '\x1E':
+				strikethrough = !strikethrough
+			case '\x1D':
+				italic = !italic
 			case '\x0f':
 				fg, bg = -1, -1
 				continue
@@ -89,7 +98,8 @@ func NewASCII(dat string) (*ASCII, error) {
 		if err != nil {
 			return nil, err
 		}
-		row = append(row, Cell{Value: v, ColorPair: ColorPair{fgc, bgc}})
+		row = append(row, Cell{Value: v, ColorPair: ColorPair{fgc, bgc},
+			CharAttr: CharAttr{Italic: italic, Bold: bold, Underline: underline, Strikethrough: strikethrough}})
 	}
 	if row != nil {
 		cells = append(cells, row)
@@ -262,6 +272,7 @@ func (a *ASCII) AnsiBytes() []byte {
 	txt, inserts := []byte(a.Text()), 0
 	for _, ce := range a.Colors() {
 		var code []byte
+		code = append(code, ce.AnsiCode(&ansiPalette)...)
 		code = append(code, []byte("\u001b[0m")...)
 		if ce.Bold {
 			code = append(code, []byte("\u001b[1m")...)
@@ -272,7 +283,9 @@ func (a *ASCII) AnsiBytes() []byte {
 		if ce.Underline {
 			code = append(code, []byte("\u001b[4m")...)
 		}
-		code = append(code, ce.AnsiCode(&ansiPalette)...)
+		if ce.Strikethrough {
+			code = append(code, []byte("\u001b[9m")...)
+		}
 		codelen := len(code)
 		newtxt := append(
 			txt[:ce.Start+inserts],
