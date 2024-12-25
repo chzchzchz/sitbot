@@ -52,31 +52,40 @@ func (c ColorPair) MircCode(p *Palette) []byte {
 	return ret
 }
 
-func ansiCode(inColor color.Color) []byte {
+func ansiCode(inColor color.Color) ([]byte, bool) {
+	high := false
 	c := lookupAnsiIndex(inColor)
 	if c == -1 {
 		panic("invalid ansi color")
 	}
 	ret := []byte(fmt.Sprintf("%d", c%8))
 	if c >= 8 {
-		ret = append(ret, []byte(";1")...)
+		high = true
 	}
-	return append(ret, 'm')
+	return append(ret, 'm'), high
 }
 
 func (c ColorPair) AnsiCode(p *Palette) []byte {
 	if c == DefaultColorPair {
 		return []byte("\u001b[0m")
 	}
+	var ret []byte
 	if c.Foreground == nil {
 		panic("bg but fg")
 	}
-	ret := append([]byte("\u001b[3"), ansiCode(c.Foreground)...)
+	if code, high := ansiCode(c.Foreground); !high {
+		ret = append([]byte("\u001b[3"), code...)
+	} else {
+		ret = append([]byte("\u001b[9"), code...)
+	}
 	if c.Background == nil {
 		return ret
 	}
-	ret = append(ret, []byte("\u001b[4")...)
-	ret = append(ret, ansiCode(c.Background)...)
+	if code, high := ansiCode(c.Background); !high {
+		ret = append(ret, append([]byte("\u001b[4"), code...)...)
+	} else {
+		ret = append(ret, append([]byte("\u001b[10"), code...)...)
+	}
 	if string(ret[len(ret)-2:]) == ";1" {
 		fmt.Println("hi")
 		ret = ret[:len(ret)-2]
