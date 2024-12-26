@@ -86,9 +86,5 @@ func (c ColorPair) AnsiCode(p *Palette) []byte {
 	} else {
 		ret = append(ret, append([]byte("\u001b[10"), code...)...)
 	}
-	if string(ret[len(ret)-2:]) == ";1" {
-		fmt.Println("hi")
-		ret = ret[:len(ret)-2]
-	}
 	return ret
 }
