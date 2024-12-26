@@ -31,6 +31,15 @@ func TestControlCodes(t *testing.T) {
 	}
 }
 
+func TestColorCancelAteChars(t *testing.T) {
+	s := `11,11  test`
+	//          01 2345
+	a, _ := NewASCII(s)
+	if c := a.Get(2, 0); c == nil || c.Value != 't' {
+		t.Errorf("Expected t but found %c", c.Value)
+	}
+}
+
 func TestColorReload(t *testing.T) {
 	// expect black background
 	s := `11,11     1,011111111111111111111111,11 1,11jjj11,11   `
