@@ -60,7 +60,7 @@ func NewASCII(dat string) (*ASCII, error) {
 				continue
 			}
 		case 1:
-			if v >= '0' && v <= '9' && fg != 0 && fgs < 2 {
+			if v >= '0' && v <= '9' && fgs < 2 {
 				if fg == -1 {
 					fg = 0
 				}
