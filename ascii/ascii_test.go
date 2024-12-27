@@ -40,6 +40,59 @@ func TestColorCancelAteChars(t *testing.T) {
 	}
 }
 
+func TestFGColorLeadingZero(t *testing.T) {
+	s := `09test`
+	//       0123
+	a, _ := NewASCII(s)
+	c := a.Get(0, 0)
+	if c == nil || c.Value != 't' {
+		t.Errorf("Expected t but found %c", c.Value)
+	}
+	fg, _ := MircColor(9)
+	if c.Foreground != fg {
+		t.Errorf("Expected fg %v but found %v", fg, c.Foreground)
+	}
+	if c.Background != nil {
+		t.Errorf("Expected bg %v but found %v", nil, c.Background)
+	}
+}
+
+func TestBGColorLeadingZero(t *testing.T) {
+	s := `9,09test`
+	//         0123
+	a, _ := NewASCII(s)
+	c := a.Get(0, 0)
+	if c == nil || c.Value != 't' {
+		t.Errorf("Expected t but found %c", c.Value)
+	}
+	fg, _ := MircColor(9)
+	if c.Foreground != fg {
+		t.Errorf("Expected fg %v but found %v", fg, c.Foreground)
+	}
+	bg, _ := MircColor(9)
+	if c.Background != bg {
+		t.Errorf("Expected bg %v but found %v", bg, c.Background)
+	}
+}
+
+func TestFGBGColorLeadingZero(t *testing.T) {
+	s := `09,08test`
+	//          0123
+	a, _ := NewASCII(s)
+	c := a.Get(0, 0)
+	if c == nil || c.Value != 't' {
+		t.Errorf("Expected t but found %c", c.Value)
+	}
+	fg, _ := MircColor(9)
+	if c.Foreground != fg {
+		t.Errorf("Expected fg %v but found %v", fg, c.Foreground)
+	}
+	bg, _ := MircColor(8)
+	if c.Background != bg {
+		t.Errorf("Expected bg %v but found %v", bg, c.Background)
+	}
+}
+
 func TestColorReload(t *testing.T) {
 	// expect black background
 	s := `11,11     1,011111111111111111111111,11 1,11jjj11,11   `
