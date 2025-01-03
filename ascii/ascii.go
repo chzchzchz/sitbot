@@ -34,6 +34,7 @@ func NewASCII(dat string) (*ASCII, error) {
 			bold, underline, strikethrough, italic = false, false, false, false
 			cells = append(cells, row)
 			chompState, fg, bg = 0, -1, -1
+			fgs, bgs = 0, 0
 			row = nil
 			continue
 		case '\x02':
@@ -60,6 +61,11 @@ func NewASCII(dat string) (*ASCII, error) {
 				continue
 			}
 		case 1:
+			if v == '\x03' {
+				fg, bg = -1, -1
+				fgs = 0
+				continue
+			}
 			if v >= '0' && v <= '9' && fgs < 2 {
 				if fg == -1 {
 					fg = 0
