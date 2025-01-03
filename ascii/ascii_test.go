@@ -251,6 +251,28 @@ func TestLeadingColorAfterItalicAfterColorCodeAfterNewlineAfterColor(t *testing.
 	}
 }
 
+func TestColoredComma(t *testing.T) {
+	s := "\x0315, "
+	//          01
+	a, _ := NewASCII(s)
+
+	c := a.Get(0, 0)
+	if c == nil {
+		t.Error("Expected , at pos 0 but found nil")
+		PrintExpectedVsParsed(s, a, t)
+	} else {
+		if c.Value != ',' {
+			t.Errorf("Expected , at pos 0 but found %c", c.Value)
+			PrintExpectedVsParsed(s, a, t)
+		}
+		fg, _ := MircColor(15)
+		if c.Foreground != fg {
+			t.Errorf("Expected color 15 at pos 0 but found %v", c.Foreground)
+			PrintExpectedVsParsed(s, a, t)
+		}
+	}
+}
+
 func TestColorCancelAteChars(t *testing.T) {
 	s := `11,11  test`
 	//          01 2345

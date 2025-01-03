@@ -26,7 +26,7 @@ func NewASCII(dat string) (*ASCII, error) {
 	var row []Cell
 	chompState, fg, bg, fgs, bgs := 0, -1, -1, 0, 0
 	var bold, underline, italic, strikethrough bool
-	for _, v := range dat {
+	for i, v := range dat {
 		switch v {
 		case '\r':
 			continue
@@ -80,8 +80,11 @@ func NewASCII(dat string) (*ASCII, error) {
 				break
 			}
 			if v == ',' {
-				chompState, bg = 2, -1
-				continue
+				if len(dat) > i+1 && dat[i+1] >= '0' && dat[i+1] <= '9' {
+					chompState, bg = 2, -1
+					continue
+				}
+				chompState = 0
 			}
 		case 2:
 			if v >= '0' && v <= '9' && bgs < 2 {
@@ -96,7 +99,7 @@ func NewASCII(dat string) (*ASCII, error) {
 			}
 			bgs, chompState = 0, 0
 			if bg == -1 {
-				return nil, ErrBadMircCode
+				//	return nil, ErrBadMircCode
 			}
 		}
 		fgc, err := MircColor(fg)
