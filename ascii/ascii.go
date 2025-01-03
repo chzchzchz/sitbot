@@ -62,7 +62,11 @@ func NewASCII(dat string) (*ASCII, error) {
 			}
 		case 1:
 			if v == '\x03' {
-				fg, bg = -1, -1
+				if fgs > 0 {
+					fg = -1
+				} else {
+					fg, bg = -1, -1
+				}
 				fgs = 0
 				continue
 			}

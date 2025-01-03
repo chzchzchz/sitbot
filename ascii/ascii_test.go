@@ -41,7 +41,7 @@ func PrettyFormat(ircText string) string {
 }
 
 func PrintExpectedVsParsed(expected string, ascii *ASCII, t *testing.T) {
-	t.Errorf(" Expected: %s", PrettyFormat(expected))
+	t.Errorf(" Input   : %s", PrettyFormat(expected))
 	t.Errorf(" Parsed  : %s", PrettyFormat(string(ascii.Bytes())))
 }
 
@@ -268,6 +268,33 @@ func TestColoredComma(t *testing.T) {
 		fg, _ := MircColor(15)
 		if c.Foreground != fg {
 			t.Errorf("Expected color 15 at pos 0 but found %v", c.Foreground)
+			PrintExpectedVsParsed(s, a, t)
+		}
+	}
+}
+
+func TestBackgroundPersistsAfterBackToBack(t *testing.T) {
+	s := "\x0315,01\x0303\x0304moo"
+	//                         012
+	a, _ := NewASCII(s)
+
+	c := a.Get(0, 0)
+	if c == nil {
+		t.Error("Expected m at pos 0 but found nil")
+		PrintExpectedVsParsed(s, a, t)
+	} else {
+		if c.Value != 'm' {
+			t.Errorf("Expected m at pos 0 but found %c", c.Value)
+			PrintExpectedVsParsed(s, a, t)
+		}
+		fg, _ := MircColor(4)
+		if c.Foreground != fg {
+			t.Errorf("Expected color 4 at pos 0 but found %v", c.Foreground)
+			PrintExpectedVsParsed(s, a, t)
+		}
+		bg, _ := MircColor(1)
+		if c.Background != bg {
+			t.Errorf("Expected color 1 at pos 0 but found %v", c.Background)
 			PrintExpectedVsParsed(s, a, t)
 		}
 	}
