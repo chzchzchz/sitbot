@@ -33,8 +33,7 @@ func NewASCII(dat string) (*ASCII, error) {
 		case '\n':
 			bold, underline, strikethrough, italic = false, false, false, false
 			cells = append(cells, row)
-			chompState, fg, bg = 0, -1, -1
-			fgs, bgs = 0, 0
+			chompState, fg, bg, fgs, bgs = 0, -1, -1, 0, 0
 			row = nil
 			continue
 		case '\x02':
