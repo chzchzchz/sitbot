@@ -2,7 +2,7 @@ package main
 
 import (
 	"io/ioutil"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/andlabs/ui"
@@ -31,7 +31,7 @@ func uiFunc() {
 			return err
 		}
 		board.SetASCII(aa)
-		log.Println("loaded ascii", fname)
+		slog.Info("loaded ascii", "fname", fname)
 		return nil
 	}
 
@@ -42,17 +42,17 @@ func uiFunc() {
 	loadButton := ui.NewButton("Load")
 	loadButton.OnClicked(func(*ui.Button) {
 		if err := loadAscii(ui.OpenFile(window)); err != nil {
-			log.Println("error loading ascii:", err)
+			slog.Error("error loading ascii", "err", err)
 		}
 	})
 	saveButton := ui.NewButton("Save")
 	saveButton.OnClicked(func(*ui.Button) {
 		s := ui.SaveFile(window)
 		if err := ioutil.WriteFile(s, board.ASCII().Bytes(), 0644); err != nil {
-			log.Println(err)
+			slog.Error("save error", "err", err)
 			return
 		}
-		log.Println("saved to", s)
+		slog.Info("saved to", "path", s)
 	})
 	newButton := ui.NewButton("New")
 	newButton.OnClicked(func(*ui.Button) {

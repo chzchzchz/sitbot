@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -25,12 +25,15 @@ func (h *authHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.h.ServeHTTP(w, r)
 		return
 	}
-	if u, p, ok := r.BasicAuth(); !ok || u != h.user || p != h.pass {
+	u, p, ok := r.BasicAuth()
+	if !ok || u != h.user || p != h.pass {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		log.Printf("http: [%s] bad auth %q %q", r.RemoteAddr, u, p)
+		slog.Warn("http bad auth", "addr", r.RemoteAddr, "user", u, "pass", p)
+		slog.Debug("http auth attempt", "addr", r.RemoteAddr, "provided_user", u, "ok", ok)
 		return
 	}
+	slog.Debug("http auth ok", "addr", r.RemoteAddr, "user", u)
 	h.h.ServeHTTP(w, r)
 }
 
@@ -53,7 +56,12 @@ func main() {
 	userFlag := flag.String("u", "", "username for basic http authentication")
 	passFlag := flag.String("p", "", "password for basic http authentication")
 	corsFlag := flag.Bool("cors", false, "enable CORS")
+	debugFlag := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
+
+	if *debugFlag {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 
 	laddr := *laddrFlag
 	if os.Getenv("SITBOT_URL") == "" {
@@ -70,14 +78,14 @@ func main() {
 	var h http.Handler
 	h = mux
 	if len(*userFlag) > 0 {
-		log.Println("using basic authentication on user " + *userFlag)
+		slog.Info("using basic authentication on user", "user", *userFlag)
 		h = &authHttpHandler{h: h, user: *userFlag, pass: *passFlag}
 	}
 	if *corsFlag {
-		log.Println("enabling CORS")
+		slog.Info("enabling CORS")
 		h = &corsHandler{h: h}
 	}
 
-	log.Println("serving bot on", laddr)
+	slog.Info("serving bot on", "laddr", laddr)
 	http.ListenAndServe(laddr, h)
 }

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 )
@@ -23,7 +23,7 @@ func NewCmd(ctx context.Context, cmdname string, args []string, env []string) (*
 	cmd.Env = append(os.Environ(), env...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Println(err)
+		slog.Error("cmd error", "err", err)
 		return nil, err
 	}
 	if err := cmd.Start(); err != nil {

@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -128,6 +129,7 @@ func (b *Bot) Close() {
 }
 
 func (b *Bot) Write(tid TaskId, msg irc.Message) error {
+	slog.Debug("Bot.Write", "tid", tid, "command", msg.Command, "params", msg.Params)
 	if tid == 0 {
 		return b.mc.WriteMsg(msg)
 	}

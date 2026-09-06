@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"path"
 	"strings"
@@ -66,6 +67,7 @@ func (h *botHandler) postMessage(b *bot.Bot, m *BotPostMessage) error {
 	} else if m.Command == irc.KILL && len(m.Params) == 0 {
 		return b.Tasks.Kill(m.TaskId)
 	}
+	slog.Debug("postMessage", "tid", m.TaskId, "command", m.Command, "params", m.Params, "botnil", b == nil)
 	return b.Write(m.TaskId, m.Message)
 }
 

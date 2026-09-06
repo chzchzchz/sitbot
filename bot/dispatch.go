@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -64,7 +64,7 @@ func (d *Dispatcher) run(name, cmdtxt string, pm **PatternMatcher, f TaskFunc) {
 	if taskCmd == "" {
 		return
 	}
-	log.Printf("[task] %q matched to %q", cmdtxt, taskCmd)
+	slog.Info("[task] matched", "cmdtxt", cmdtxt, "taskCmd", taskCmd)
 	d.Tasks.Run(name, taskCmd, f)
 }
 

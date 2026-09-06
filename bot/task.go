@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -141,7 +141,7 @@ func (t *Tasks) Run(name, cmdtxt string, f TaskFunc) {
 			return
 		}
 		if err := f(task); err != nil {
-			log.Printf("[task] failed on command %q (%v)", task.Command, err)
+			slog.Error("[task] failed on command", "command", task.Command, "err", err)
 		}
 	}()
 }

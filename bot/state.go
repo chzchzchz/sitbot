@@ -1,7 +1,7 @@
 package bot
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -39,7 +39,7 @@ func (s *State) Process(msg irc.Message) error {
 	case irc.RPL_NAMREPLY:
 		room, users := msg.Params[2], msg.Params[3]
 		if room[0] != '#' {
-			log.Printf("not a channel: %q", room)
+			slog.Info("not a channel", "room", room)
 			break
 		}
 		r := s.lookupRoom(room)

@@ -2,7 +2,7 @@ package bot
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -50,13 +50,15 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 		for {
 			msg, err := mc.Decode()
 			if err != nil {
+				slog.Error("Decode error", "err", err)
 				mc.Conn.Close()
 				return
 			}
 			if msg == nil {
-				log.Printf("got nil message on %s", conn.RemoteAddr().String())
+				slog.Info("got nil message on", conn.RemoteAddr().String())
 				continue
 			}
+			slog.Debug("irc reply", "command", msg.Command, "params", msg.Params, "prefix", msg.Prefix)
 			select {
 			case mc.readc <- *msg:
 				atomic.AddUint64(&mc.rxMsgs, 1)
@@ -91,8 +93,10 @@ func NewMsgConn(ctx context.Context, conn net.Conn, invl time.Duration) (*MsgCon
 func (mc *MsgConn) WriteMsg(m irc.Message) error {
 	select {
 	case mc.writec <- m:
+		slog.Debug("WriteMsg sent", "command", m.Command, "params", m.Params)
 		return nil
 	case <-mc.ctx.Done():
+		slog.Error("WriteMsg context canceled", "command", m.Command, "params", m.Params, "err", mc.ctx.Err())
 		return mc.ctx.Err()
 	}
 }

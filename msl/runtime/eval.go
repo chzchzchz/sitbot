@@ -3,7 +3,7 @@ package runtime
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
 	"math/rand"
 	"regexp"
@@ -21,9 +21,9 @@ type callFrame struct {
 }
 
 func EvalCond(s string) bool {
-	log.Println("start eval condition", s)
+	slog.Info("start eval condition", "s", s)
 	v := eval(s)
-	log.Println("eval condition", s, "->", v)
+	slog.Info("eval condition", "s", s, "v", v)
 	return s2b(v)
 }
 
@@ -50,7 +50,7 @@ func Stmt(values ...string) {
 		terms[i] = eval(s)
 	}
 	// Run commmand.
-	log.Printf("stmt terms: %+v => %+v\n", values, terms)
+	slog.Info("stmt terms", "values", values, "terms", terms)
 	switch strings.ToLower(terms[0]) {
 	case "msg":
 		msg := &irc.Message{
@@ -65,7 +65,7 @@ func Stmt(values ...string) {
 		terms[1] = evalReference(values[1])
 		mustVar(terms[1])
 		mslVar.SetLocal(terms[1][1:], terms[2])
-		log.Println("var ", terms[1], "=", terms[2])
+		slog.Info("var", "name", terms[1], "value", terms[2])
 	case "inc":
 		terms[1] = evalReference(values[1])
 		mustVar(terms[1])
@@ -103,7 +103,7 @@ func Stmt(values ...string) {
 			}
 			for k := range mslVar.Globals {
 				if re.MatchString(k) {
-					log.Println("unsetting variable", k)
+					slog.Info("unsetting variable", "k", k)
 					delete(mslVar.Globals, k)
 				}
 			}
@@ -138,7 +138,7 @@ func evalReference(s string) string {
 }
 
 func eval(s string) string {
-	log.Printf("start eval %q", s)
+	slog.Info("start eval", "s", s)
 	return evalAny(s, false)
 }
 
@@ -166,7 +166,6 @@ func (g *EvalGrammar) endCall() {
 	i := len(g.frames) - 1
 	top := g.frames[i]
 	v := ""
-	// log.Println("issuing call", top.cmd, top.args)
 	switch strings.ToLower(top.cmd) {
 	case "chan":
 		if v = mslEv.Chan; v == "" {
@@ -219,11 +218,11 @@ func (g *EvalGrammar) endCall() {
 		v = f2s(vv)
 	case "replace":
 		v = top.args[0]
-		log.Println("args", top.args)
+		slog.Info("replace args", "args", top.args)
 		for i := 1; i < len(top.args); i += 2 {
 			v = strings.Replace(v, top.args[i], top.args[i+1], -1)
 		}
-		log.Println("replaced", top.args[0], "to", v)
+		slog.Info("replaced", "from", top.args[0], "to", v)
 	case "bytes":
 		vv := s2f(top.args[0])
 		if top.args[1] != "b" {
@@ -306,7 +305,7 @@ func (g *EvalGrammar) evalVar() (ret string) {
 	if len(name) != 0 {
 		ret += suffix
 	}
-	log.Printf("evaluated %q -> %q => %q", name, g.v, ret)
+	slog.Info("evaluated", "name", name, "v", g.v, "ret", ret)
 	return ret
 }
 
@@ -398,10 +397,8 @@ func isNotIn(a, b string) string { return b2s(!strings.Contains(b, a)) }
 func (g *EvalGrammar) applyBinOp() {
 	i, j := len(g.binOps)-1, len(g.exprStack)
 	lhs, rhs := g.exprStack[j-2], g.exprStack[j-1]
-	// log.Printf("before bin op (%+v, %+v); g.v=%+v exprs=%+v", lhs, rhs, g.v, g.exprStack)
 	ret := g.binOps[i](lhs, rhs)
 	g.binOps, g.exprStack = g.binOps[:i], g.exprStack[:j-2]
-	// log.Printf("after bin op exprs=%+v ret=%+v", g.exprStack, ret)
 	g.v = ret
 }
 

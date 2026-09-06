@@ -2,7 +2,7 @@ package runtime
 
 import (
 	"encoding/gob"
-	"log"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -32,13 +32,13 @@ func init() {
 func (m *Variables) Load(fname string) {
 	inf, err := os.Open(fname)
 	if err != nil {
-		log.Printf("got error %v on file %q", err, fname)
+		slog.Error("got error on file", "err", err, "fname", fname)
 	} else {
 		dec := gob.NewDecoder(inf)
 		dec.Decode(m)
 	}
 	inf.Close()
-	log.Printf("loaded %+v", m)
+	slog.Info("loaded", "m", m)
 }
 
 func (m *Variables) Save(fname string) {
@@ -51,7 +51,7 @@ func (m *Variables) Save(fname string) {
 	if err := enc.Encode(m); err != nil {
 		panic(err)
 	}
-	log.Printf("saved %+v", m)
+	slog.Info("saved", "m", m)
 }
 
 func (m *Variables) SetLocal(name, val string) {

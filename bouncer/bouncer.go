@@ -3,7 +3,7 @@ package bouncer
 import (
 	"context"
 	"io"
-	"log"
+	"log/slog"
 	"net"
 	"sync"
 	"time"
@@ -42,19 +42,19 @@ func NewBouncer(b *bot.Bot, serv string) (*Bouncer, error) {
 			}
 			conn, err := ln.Accept()
 			if err != nil {
-				log.Println(err)
+				slog.Error("bouncer accept error", "err", err)
 				return
 			}
 			mc, err := bot.NewMsgConn(ctx, conn, time.Millisecond)
 			if err != nil {
-				log.Println(err)
+				slog.Error("bouncer conn error", "err", err)
 				return
 			}
 			bounce.wg.Add(1)
 			go func() {
 				defer bounce.wg.Done()
 				err := bounce.handleConn(mc)
-				log.Printf("bouncer closing %v (%v)", conn.RemoteAddr(), err)
+				slog.Error("bouncer closing", "addr", conn.RemoteAddr(), "err", err)
 			}()
 		}
 	}()
@@ -71,7 +71,7 @@ func (bounce *Bouncer) handleConn(mc *bot.MsgConn) error {
 	for handshaking {
 		select {
 		case msg, ok := <-mc.ReadChan():
-			log.Printf("handshake %+v", msg)
+			slog.Info("bouncer handshake", "msg", msg)
 			handshaking = ok
 		case <-time.After(time.Second):
 			handshaking = false
@@ -141,7 +141,7 @@ func (bounce *Bouncer) handleConn(mc *bot.MsgConn) error {
 		var ok bool
 		select {
 		case msg, ok = <-mc.ReadChan():
-			log.Printf("bouncer got from client %+v", msg)
+			slog.Info("bouncer got from client", "msg", msg)
 			if msg.Command == irc.QUIT {
 				return io.EOF
 			}
@@ -164,7 +164,7 @@ func (bounce *Bouncer) handleConn(mc *bot.MsgConn) error {
 		if msg.Command == irc.PING {
 			continue
 		}
-		log.Printf("bouncer relaying %+v", msg)
+		slog.Info("bouncer relaying", "msg", msg)
 		if err := tgtmc.WriteMsg(msg); err != nil {
 			return err
 		}
